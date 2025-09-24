@@ -1,0 +1,123 @@
+Title: Smart Education Futuristic Platform (Full-Stack + Futuristic UI + Role Interconnection)
+
+Instruction to Agent:
+Build a scalable, futuristic Smart Education platform with React 19 + TypeScript 5 + Tailwind CSS 4 + Framer Motion for the frontend, and a modular backend (Node.js + Express + PostgreSQL) for persistent storage.
+
+🎯 Core Requirements
+
+Frontend: React + Vite + TypeScript + TailwindCSS + Framer Motion
+
+UI: Modern, futuristic, glassmorphism + neon glow + smooth animations
+
+Routing: React Router v6 with clean page-based routes
+
+State Management: Context API (or Zustand)
+
+Authentication: Google OAuth + Email/Password (JWT-based)
+
+Backend: Node.js + Express + PostgreSQL with Prisma ORM
+
+Real-Time Updates: WebSockets for announcements, new assignments, and emotional state changes
+
+AI-ready placeholders: Emotion detection, recommendation engine, performance analytics
+
+📂 Pages to Generate
+
+LandingPage.tsx – Role-based login (Student/Teacher/Parent)
+
+StudentDashboard.tsx – Courses, assignments, timetable, emotion stats, gamification badges
+
+EducatorDashboard.tsx – Course creation, upload materials, assignment manager, analytics
+
+ParentDashboard.tsx – Track child’s progress, attendance, emotional state, messaging
+
+CoursePlayer.tsx – Interactive video player + notes + quiz + bookmarks
+
+AssignmentsPage.tsx – Submit, view deadlines, check grades
+
+TimetablePage.tsx – Weekly view, teacher updates auto-sync to students
+
+EmotionMonitorPage.tsx – Webcam/mic placeholder, emotion history graph
+
+NoticesAndAnnouncements.tsx – Real-time announcements (teacher → students & parents)
+
+ProfileAndSettings.tsx – Edit profile, switch themes, notification settings
+
+NotFound.tsx – Futuristic 404 redirect
+
+🔄 System Behavior / Interconnections
+
+Teacher → Student
+
+When a teacher uploads a course, material, or assignment, it should instantly appear in the student’s dashboard & assignments page.
+
+Teacher announcements should show in the student’s Notices page in real time.
+
+When teacher updates timetable → it reflects instantly on all student dashboards.
+
+Student → Teacher
+
+When a student submits an assignment, the teacher should see submission status, grades pending, and completion analytics.
+
+Student’s emotion data (via EmotionMonitor) should be available to teacher in dashboard analytics.
+
+Parent → Student
+
+Parent can see the child’s progress, attendance, and emotion history.
+
+Parent can get notifications about missing assignments or low attendance.
+
+AI Features
+
+AI recommendations for students: suggest study materials or revision schedules.
+
+AI insights for teachers: class emotional state trends.
+
+AI alerts for parents: “Your child seems stressed during study hours.”
+
+🎨 UI/UX Guidelines
+
+Futuristic glassmorphism + neon glow + animated gradients
+
+Framer Motion page transitions, hover animations, and parallax effects
+
+Charts/Analytics: Recharts for progress tracking, attendance graphs, emotional trends
+
+Toasts/Notifications: Sonner for real-time updates
+
+Dark/Futuristic Mode toggle in Profile settings
+
+🚀 Features to Implement
+
+Role-based authentication (Student, Teacher, Parent)
+
+Persistent storage with PostgreSQL
+
+Teacher-created content instantly reflects on Student dashboard
+
+Assignments with submission, grading, and analytics
+
+Real-time announcements using WebSockets
+
+Timetable sync across Teacher → Student → Parent
+
+Emotion monitoring (mocked for now) with graphs
+
+Parent monitoring tools (attendance, grades, emotional health)
+
+Profile management & theme switching
+
+✅ Deliverables
+
+Fully functional frontend + backend with working interconnections
+
+Demo AI features (mock APIs for emotion + recommendations)
+
+PostgreSQL schema for Users, Roles, Courses, Assignments, Timetable, Emotions
+
+Beautiful futuristic UI with animations, glass panels, neon cards
+
+Seed with mock demo data for testing dashboards
+
+⚡ Final Note to Agent:
+Focus on live interconnections between Student, Teacher, and Parent roles. Whenever a teacher adds/updates, it must instantly reflect on student and parent dashboards. Build role-based APIs with clean TypeScript types, modular backend, and futuristic UI.
