@@ -212,6 +212,8 @@ export const insertAssignmentSchema = createInsertSchema(assignments).pick({
   description: true,
   dueDate: true,
   maxPoints: true,
+}).extend({
+  dueDate: z.coerce.date(), // Convert string dates to Date objects
 });
 
 export const insertAnnouncementSchema = createInsertSchema(announcements).pick({

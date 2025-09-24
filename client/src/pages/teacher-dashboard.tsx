@@ -565,8 +565,14 @@ export default function TeacherDashboard() {
                         <Input 
                           type="number"
                           placeholder="100"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          value={field.value || 100}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 100 : parseInt(e.target.value) || 100;
+                            field.onChange(value);
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-max-points"
                           className="glass-morphism"
                         />

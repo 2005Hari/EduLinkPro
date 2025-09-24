@@ -113,8 +113,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only teachers can create assignments" });
       }
       
+      console.log("[DEBUG] Assignment creation - Request body:", req.body);
       const assignmentData = insertAssignmentSchema.parse(req.body);
+      console.log("[DEBUG] Assignment creation - Parsed data:", assignmentData);
+      
       const assignment = await storage.createAssignment(assignmentData);
+      console.log("[DEBUG] Assignment creation - Created assignment:", assignment);
       
       // Broadcast new assignment to connected clients
       broadcastToClients({
@@ -124,6 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(assignment);
     } catch (error) {
+      console.error("[ERROR] Assignment creation failed:", error);
       res.status(500).json({ message: "Failed to create assignment" });
     }
   });
