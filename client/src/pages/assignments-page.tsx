@@ -1,12 +1,41 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/main-layout";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { NeonButton } from "@/components/ui/neon-button";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { queryClient } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
+import { useState } from "react";
+import { z } from "zod";
+// Extended assignment type that includes submission data from API joins
+type AssignmentWithSubmission = {
+  id: string;
+  title: string;
+  description: string | null;
+  courseId: string;
+  dueDate: Date | string;
+  maxPoints: number | null;
+  courseTitle?: string;
+  status?: "pending" | "submitted" | "graded" | null;
+  grade?: number | null;
+  feedback?: string | null;
+  submittedAt?: Date | string | null;
+  gradedAt?: Date | string | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+};
 import { 
   Calendar, 
   Clock, 
@@ -14,13 +43,90 @@ import {
   CheckCircle, 
   AlertTriangle,
   Upload,
-  Eye
+  Eye,
+  Star
 } from "lucide-react";
 
+const submissionSchema = z.object({
+  content: z.string().min(1, "Assignment content is required"),
+  attachments: z.array(z.string()).optional(),
+});
+
+type SubmissionFormData = z.infer<typeof submissionSchema>;
+
 export default function AssignmentsPage() {
-  const { data: assignments = [] } = useQuery({
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+
+  const { data: assignments = [] } = useQuery<AssignmentWithSubmission[]>({
     queryKey: ["/api/assignments"],
+    enabled: !!user,
   });
+
+  // Assignment submission mutation
+  const submitAssignmentMutation = useMutation({
+    mutationFn: async ({ assignmentId, data }: { assignmentId: string; data: SubmissionFormData }) => {
+      const response = await fetch(`/api/assignments/${assignmentId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to submit assignment");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      setSubmitDialogOpen(false);
+      setSelectedAssignment(null);
+      toast({
+        title: "Success",
+        description: "Assignment submitted successfully!",
+      });
+      submissionForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to submit assignment. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Submission form
+  const submissionForm = useForm<SubmissionFormData>({
+    resolver: zodResolver(submissionSchema),
+    defaultValues: {
+      content: "",
+      attachments: [],
+    },
+  });
+
+  const onSubmitAssignment = (data: SubmissionFormData) => {
+    if (selectedAssignment) {
+      submitAssignmentMutation.mutate({
+        assignmentId: selectedAssignment.id,
+        data,
+      });
+    }
+  };
+
+  // Click handlers
+  const handleSubmitClick = (assignment: any) => {
+    setSelectedAssignment(assignment);
+    setSubmitDialogOpen(true);
+  };
+
+  const handleViewGradeClick = (assignment: any) => {
+    setSelectedAssignment(assignment);
+    setGradeDialogOpen(true);
+  };
 
   const getStatusColor = (status: string, dueDate: string) => {
     const isOverdue = new Date(dueDate) < new Date();
@@ -82,7 +188,7 @@ export default function AssignmentsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
                 <p className="text-2xl font-bold text-yellow-400">
-                  {assignments.filter((a: any) => !a.status || a.status === "pending").length}
+                  {assignments.filter((a) => !a.status || a.status === "pending").length}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-yellow-400" />
@@ -94,7 +200,7 @@ export default function AssignmentsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Submitted</p>
                 <p className="text-2xl font-bold text-blue-400">
-                  {assignments.filter((a: any) => a.status === "submitted").length}
+                  {assignments.filter((a) => a.status === "submitted").length}
                 </p>
               </div>
               <FileText className="h-8 w-8 text-blue-400" />
@@ -106,7 +212,7 @@ export default function AssignmentsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Graded</p>
                 <p className="text-2xl font-bold text-green-400">
-                  {assignments.filter((a: any) => a.status === "graded").length}
+                  {assignments.filter((a) => a.status === "graded").length}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-400" />
@@ -122,7 +228,7 @@ export default function AssignmentsPage() {
           
           <div className="space-y-4">
             {assignments.length > 0 ? (
-              assignments.map((assignment: any) => (
+              assignments.map((assignment) => (
                 <motion.div
                   key={assignment.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -169,7 +275,12 @@ export default function AssignmentsPage() {
                     
                     <div className="flex items-center gap-2 ml-4">
                       {assignment.status === "graded" ? (
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleViewGradeClick(assignment)}
+                          data-testid={`button-view-grade-${assignment.id}`}
+                        >
                           <Eye className="h-4 w-4 mr-1" />
                           View Grade
                         </Button>
@@ -178,10 +289,15 @@ export default function AssignmentsPage() {
                           Submitted {assignment.submittedAt && format(new Date(assignment.submittedAt), "MMM d")}
                         </Badge>
                       ) : (
-                        <Button size="sm">
+                        <NeonButton 
+                          size="sm" 
+                          neon
+                          onClick={() => handleSubmitClick(assignment)}
+                          data-testid={`button-submit-${assignment.id}`}
+                        >
                           <Upload className="h-4 w-4 mr-1" />
                           Submit
-                        </Button>
+                        </NeonButton>
                       )}
                     </div>
                   </div>
@@ -207,6 +323,159 @@ export default function AssignmentsPage() {
             )}
           </div>
         </GlassCard>
+
+        {/* Assignment Submission Dialog */}
+        <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+          <DialogContent className="glass-morphism border-neon max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                <GradientText>Submit Assignment</GradientText>
+              </DialogTitle>
+              {selectedAssignment && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedAssignment.title} • Due: {format(new Date(selectedAssignment.dueDate), "MMM d, yyyy 'at' h:mm a")}
+                </p>
+              )}
+            </DialogHeader>
+            <Form {...submissionForm}>
+              <form onSubmit={submissionForm.handleSubmit(onSubmitAssignment)} className="space-y-4">
+                <FormField
+                  control={submissionForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assignment Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter your assignment content, answers, or notes here..." 
+                          {...field} 
+                          data-testid="textarea-assignment-content"
+                          className="glass-morphism min-h-[200px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={submissionForm.control}
+                  name="attachments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>File Attachments (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="file" 
+                          multiple
+                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            field.onChange(files.map(f => f.name));
+                          }}
+                          data-testid="input-assignment-files"
+                          className="glass-morphism"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB each)
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSubmitDialogOpen(false)}
+                    data-testid="button-cancel-submission"
+                  >
+                    Cancel
+                  </Button>
+                  <NeonButton 
+                    type="submit" 
+                    neon 
+                    disabled={submitAssignmentMutation.isPending}
+                    data-testid="button-confirm-submission"
+                  >
+                    {submitAssignmentMutation.isPending ? "Submitting..." : "Submit Assignment"}
+                  </NeonButton>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Grade Viewing Dialog */}
+        <Dialog open={gradeDialogOpen} onOpenChange={setGradeDialogOpen}>
+          <DialogContent className="glass-morphism border-neon">
+            <DialogHeader>
+              <DialogTitle>
+                <GradientText>Assignment Grade</GradientText>
+              </DialogTitle>
+            </DialogHeader>
+            {selectedAssignment && (
+              <div className="space-y-4">
+                <div className="text-center py-6">
+                  <div className="text-4xl font-bold text-primary mb-2">
+                    {selectedAssignment.grade || 0}/{selectedAssignment.maxPoints || 100}
+                  </div>
+                  <div className="flex items-center justify-center gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star} 
+                        className={`h-5 w-5 ${
+                          star <= Math.round((selectedAssignment.grade / selectedAssignment.maxPoints) * 5)
+                            ? "text-yellow-400 fill-current" 
+                            : "text-muted-foreground"
+                        }`} 
+                      />
+                    ))}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {((selectedAssignment.grade / selectedAssignment.maxPoints) * 100).toFixed(1)}%
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold mb-1">Assignment</h4>
+                    <p className="text-sm text-muted-foreground">{selectedAssignment.title}</p>
+                  </div>
+                  
+                  {selectedAssignment.feedback && (
+                    <div>
+                      <h4 className="font-semibold mb-1">Teacher Feedback</h4>
+                      <div className="p-3 glass-morphism rounded-lg">
+                        <p className="text-sm">{selectedAssignment.feedback}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Submitted:</span>
+                      <p>{selectedAssignment.submittedAt && format(new Date(selectedAssignment.submittedAt), "MMM d, yyyy")}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Graded:</span>
+                      <p>{selectedAssignment.gradedAt && format(new Date(selectedAssignment.gradedAt), "MMM d, yyyy")}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setGradeDialogOpen(false)}
+                    data-testid="button-close-grade"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </MainLayout>
   );
