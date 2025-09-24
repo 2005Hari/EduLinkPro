@@ -134,6 +134,16 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Attendance tracking
+export const attendanceRecords = pgTable("attendance_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").references(() => users.id).notNull(),
+  courseId: varchar("course_id").references(() => courses.id).notNull(),
+  date: timestamp("date").notNull(),
+  status: varchar("status", { enum: ["present", "absent", "late", "excused"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   courses: many(courses),

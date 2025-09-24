@@ -10,6 +10,7 @@ import {
   notifications,
   parentChildren,
   courseMaterials,
+  attendanceRecords,
   type User, 
   type InsertUser,
   type Course,
