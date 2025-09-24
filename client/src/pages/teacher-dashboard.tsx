@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,15 +21,16 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCourseSchema, insertAssignmentSchema } from "@shared/schema";
+import { insertCourseSchema, insertAssignmentSchema, insertAnnouncementSchema } from "@shared/schema";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye } from "lucide-react";
+import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye, Megaphone } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
 type CourseFormData = z.infer<typeof insertCourseSchema>;
 type AssignmentFormData = z.infer<typeof insertAssignmentSchema>;
+type AnnouncementFormData = z.infer<typeof insertAnnouncementSchema>;
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -36,6 +38,7 @@ export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
+  const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
 
   const { data: courses = [] } = useQuery<any[]>({
     queryKey: ["/api/courses"],
@@ -118,6 +121,42 @@ export default function TeacherDashboard() {
     },
   });
 
+  // Announcement creation mutation
+  const createAnnouncementMutation = useMutation({
+    mutationFn: async (data: AnnouncementFormData) => {
+      const response = await apiRequest("POST", "/api/announcements", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/analytics"] });
+      setCreateAnnouncementOpen(false);
+      toast({
+        title: "Success",
+        description: "Announcement created successfully!",
+      });
+      announcementForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create announcement. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Announcement form
+  const announcementForm = useForm<AnnouncementFormData>({
+    resolver: zodResolver(insertAnnouncementSchema),
+    defaultValues: {
+      title: "",
+      content: "",
+      courseId: "",
+      isGlobal: false,
+    },
+  });
+
   const onCreateCourse = (data: CourseFormData) => {
     createCourseMutation.mutate(data);
   };
@@ -126,9 +165,14 @@ export default function TeacherDashboard() {
     createAssignmentMutation.mutate(data);
   };
 
+  const onCreateAnnouncement = (data: AnnouncementFormData) => {
+    createAnnouncementMutation.mutate(data);
+  };
+
   // Click handlers
   const handleCreateCourse = () => setCreateCourseOpen(true);
   const handleCreateAssignment = () => setCreateAssignmentOpen(true);
+  const handleCreateAnnouncement = () => setCreateAnnouncementOpen(true);
   const handleManageStudents = () => setLocation("/students");
   const handleViewAnalytics = () => setLocation("/analytics");
   const handleManageCourse = (courseId: string) => setLocation(`/courses/${courseId}/manage`);
@@ -226,6 +270,10 @@ export default function TeacherDashboard() {
             <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleCreateAssignment} data-testid="button-create-assignment">
               <ClipboardCheck className="mr-2 h-4 w-4" />
               Create Assignment
+            </NeonButton>
+            <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleCreateAnnouncement} data-testid="button-create-announcement">
+              <Megaphone className="mr-2 h-4 w-4" />
+              Add Announcement
             </NeonButton>
             <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleManageStudents} data-testid="button-manage-students">
               <Users className="mr-2 h-4 w-4" />
@@ -497,6 +545,125 @@ export default function TeacherDashboard() {
                   data-testid="button-submit-assignment"
                 >
                   {createAssignmentMutation.isPending ? "Creating..." : "Create Assignment"}
+                </NeonButton>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Announcement Creation Dialog */}
+      <Dialog open={createAnnouncementOpen} onOpenChange={setCreateAnnouncementOpen}>
+        <DialogContent className="glass-morphism border-neon max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              <GradientText>Add Announcement</GradientText>
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...announcementForm}>
+            <form onSubmit={announcementForm.handleSubmit(onCreateAnnouncement)} className="space-y-4">
+              <FormField
+                control={announcementForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Announcement Title</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter announcement title..." 
+                        {...field} 
+                        data-testid="input-announcement-title"
+                        className="glass-morphism"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={announcementForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter announcement content..." 
+                        {...field} 
+                        data-testid="textarea-announcement-content"
+                        className="glass-morphism min-h-[120px]"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={announcementForm.control}
+                  name="courseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger className="glass-morphism" data-testid="select-announcement-course">
+                            <SelectValue placeholder="Select a course (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">No specific course</SelectItem>
+                          {courses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id}>
+                              {course.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={announcementForm.control}
+                  name="isGlobal"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 glass-morphism">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-global-announcement"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Global Announcement
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Visible to all students
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setCreateAnnouncementOpen(false)}
+                  data-testid="button-cancel-announcement"
+                >
+                  Cancel
+                </Button>
+                <NeonButton 
+                  type="submit" 
+                  neon 
+                  disabled={createAnnouncementMutation.isPending}
+                  data-testid="button-submit-announcement"
+                >
+                  {createAnnouncementMutation.isPending ? "Creating..." : "Add Announcement"}
                 </NeonButton>
               </div>
             </form>
