@@ -20,7 +20,7 @@ import {
   type EmotionEntry
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, or } from "drizzle-orm";
+import { eq, and, desc, asc, or, count } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -42,6 +42,7 @@ export interface IStorage {
   // Assignment management
   getAssignmentsByCourse(courseId: string): Promise<Assignment[]>;
   getAssignmentsByStudent(studentId: string): Promise<any[]>;
+  getAssignmentsByTeacher(teacherId: string): Promise<any[]>;
   createAssignment(assignment: any): Promise<Assignment>;
   submitAssignment(submission: any): Promise<AssignmentSubmission>;
   gradeAssignment(submissionId: string, grade: number, feedback: string): Promise<void>;
@@ -166,6 +167,27 @@ export class DatabaseStorage implements IStorage {
       )
       .where(eq(courseEnrollments.studentId, studentId))
       .orderBy(asc(assignments.dueDate));
+  }
+
+  async getAssignmentsByTeacher(teacherId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: assignments.id,
+        title: assignments.title,
+        description: assignments.description,
+        dueDate: assignments.dueDate,
+        maxPoints: assignments.maxPoints,
+        courseTitle: courses.title,
+        courseId: courses.id,
+        submissionCount: count(assignmentSubmissions.id),
+        createdAt: assignments.createdAt,
+      })
+      .from(assignments)
+      .innerJoin(courses, eq(assignments.courseId, courses.id))
+      .leftJoin(assignmentSubmissions, eq(assignments.id, assignmentSubmissions.assignmentId))
+      .where(eq(courses.teacherId, teacherId))
+      .groupBy(assignments.id, courses.id, courses.title)
+      .orderBy(desc(assignments.createdAt));
   }
 
   async createAssignment(assignment: any): Promise<Assignment> {

@@ -65,6 +65,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === "student") {
         const assignments = await storage.getAssignmentsByStudent(user.id);
         res.json(assignments);
+      } else if (user.role === "teacher") {
+        const assignments = await storage.getAssignmentsByTeacher(user.id);
+        res.json(assignments);
       } else {
         res.json([]);
       }
