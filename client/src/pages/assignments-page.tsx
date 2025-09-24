@@ -238,10 +238,10 @@ export default function AssignmentsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        {getStatusIcon(assignment.status, assignment.dueDate)}
+                        {getStatusIcon(assignment.status ?? 'pending', assignment.dueDate ?? '')}
                         <h3 className="font-semibold">{assignment.title}</h3>
-                        <Badge variant="outline" className={getStatusColor(assignment.status, assignment.dueDate)}>
-                          {getStatusText(assignment.status, assignment.dueDate)}
+                        <Badge variant="outline" className={getStatusColor(assignment.status ?? 'pending', assignment.dueDate ?? '')}>
+                          {getStatusText(assignment.status ?? 'pending', assignment.dueDate ?? '')}
                         </Badge>
                       </div>
                       
