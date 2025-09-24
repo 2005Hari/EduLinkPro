@@ -57,6 +57,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/courses/:id/enroll", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "student") {
+        return res.status(403).json({ message: "Only students can enroll in courses" });
+      }
+      
+      const courseId = req.params.id;
+      const studentId = req.user.id;
+      
+      await storage.enrollStudent(courseId, studentId);
+      
+      res.status(201).json({ message: "Successfully enrolled in course", courseId, studentId });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to enroll in course" });
+    }
+  });
+
   // Assignment routes
   app.get("/api/assignments", requireAuth, async (req, res) => {
     try {
@@ -109,10 +126,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: req.body.content,
         attachments: req.body.attachments
       });
+
+      // Broadcast new submission to relevant users only (specific teacher)
+      try {
+        // Get assignment details to find the specific teacher
+        const assignment = await storage.getAssignmentById(req.params.id);
+        if (!assignment) {
+          console.error('Failed to find assignment for submission notification');
+        } else {
+          const teacherId = assignment.teacherId;
+          const targetUsers = [teacherId]; // Only the specific teacher
+          
+          // Send only to the assignment's teacher to avoid privacy leaks
+          broadcastToSpecificUsers({
+            type: "new_submission",
+            data: {
+              submissionId: submission.id,
+              assignmentId: req.params.id,
+              studentId: req.user.id
+            }
+          }, targetUsers);
+          
+          console.log(`Submission notification sent for assignment ${req.params.id} to teacher ${teacherId}`);
+        }
+      } catch (error) {
+        console.error('Failed to broadcast submission notification:', error);
+      }
       
       res.status(201).json(submission);
     } catch (error) {
       res.status(500).json({ message: "Failed to submit assignment" });
+    }
+  });
+
+  app.post("/api/assignments/:id/grade", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "teacher") {
+        return res.status(403).json({ message: "Only teachers can grade assignments" });
+      }
+      
+      const { submissionId, grade, feedback } = req.body;
+      
+      if (!submissionId || grade === undefined) {
+        return res.status(400).json({ message: "Submission ID and grade are required" });
+      }
+      
+      await storage.gradeAssignment(submissionId, grade, feedback || "");
+
+      // Broadcast grade update to relevant users only (student and parents)
+      try {
+        // Get submission details to securely derive student ID
+        const submission = await storage.getSubmissionById(submissionId);
+        if (!submission) {
+          console.error('Failed to find submission for grading notification');
+          return;
+        }
+        
+        const studentId = submission.studentId;
+        const targetUsers = [studentId]; // Include the student
+        
+        // Send only to the graded student to avoid privacy leaks
+        broadcastToSpecificUsers({
+          type: "grade_updated",
+          data: {
+            submissionId,
+            assignmentId: req.params.id,
+            grade,
+            feedback
+          }
+        }, targetUsers);
+        
+        console.log(`Grade notification sent for assignment ${req.params.id} to student ${studentId}`);
+      } catch (error) {
+        console.error('Failed to broadcast grade notification:', error);
+      }
+      
+      res.json({ message: "Assignment graded successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to grade assignment" });
     }
   });
 
@@ -171,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Broadcast timetable update to connected clients
       broadcastToClients({
-        type: "timetable_update",
+        type: "timetable_updated",
         data: entry
       });
       
@@ -290,23 +381,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // WebSocket setup
+  // WebSocket setup with user tracking
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  const clients = new Set<WebSocket>();
+  const clients = new Map<WebSocket, { userId: string; role: string }>();
 
   wss.on('connection', (ws) => {
-    clients.add(ws);
+    ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'auth') {
+          // Store user info with WebSocket connection
+          clients.set(ws, { userId: message.userId, role: message.role });
+        }
+      } catch (error) {
+        console.error('WebSocket message parse error:', error);
+      }
+    });
     
     ws.on('close', () => {
       clients.delete(ws);
     });
   });
 
-  // Broadcast function
+  // Broadcast functions
   function broadcastToClients(message: any) {
     const messageString = JSON.stringify(message);
-    clients.forEach(client => {
+    clients.forEach((userInfo, client) => {
       if (client.readyState === WebSocket.OPEN) {
+        client.send(messageString);
+      }
+    });
+  }
+
+  function broadcastToSpecificUsers(message: any, targetUserIds: string[]) {
+    const messageString = JSON.stringify(message);
+    clients.forEach((userInfo, client) => {
+      if (client.readyState === WebSocket.OPEN && targetUserIds.includes(userInfo.userId)) {
+        client.send(messageString);
+      }
+    });
+  }
+
+  function broadcastToRoles(message: any, targetRoles: string[]) {
+    const messageString = JSON.stringify(message);
+    clients.forEach((userInfo, client) => {
+      if (client.readyState === WebSocket.OPEN && targetRoles.includes(userInfo.role)) {
         client.send(messageString);
       }
     });

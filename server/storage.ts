@@ -130,6 +130,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async enrollStudent(courseId: string, studentId: string): Promise<void> {
+    // Check if student is already enrolled
+    const existingEnrollment = await db
+      .select()
+      .from(courseEnrollments)
+      .where(and(
+        eq(courseEnrollments.courseId, courseId),
+        eq(courseEnrollments.studentId, studentId)
+      ))
+      .limit(1);
+
+    // If already enrolled, do nothing (idempotent operation)
+    if (existingEnrollment.length > 0) {
+      return;
+    }
+
+    // Otherwise, enroll the student
     await db
       .insert(courseEnrollments)
       .values({ courseId, studentId });
@@ -141,6 +157,35 @@ export class DatabaseStorage implements IStorage {
       .from(assignments)
       .where(eq(assignments.courseId, courseId))
       .orderBy(asc(assignments.dueDate));
+  }
+
+  async getAssignmentById(assignmentId: string): Promise<any> {
+    const [assignment] = await db
+      .select({
+        id: assignments.id,
+        title: assignments.title,
+        courseId: assignments.courseId,
+        teacherId: courses.teacherId,
+        courseTitle: courses.title,
+      })
+      .from(assignments)
+      .innerJoin(courses, eq(assignments.courseId, courses.id))
+      .where(eq(assignments.id, assignmentId));
+    return assignment;
+  }
+
+  async getSubmissionById(submissionId: string): Promise<any> {
+    const [submission] = await db
+      .select({
+        id: assignmentSubmissions.id,
+        assignmentId: assignmentSubmissions.assignmentId,
+        studentId: assignmentSubmissions.studentId,
+        grade: assignmentSubmissions.grade,
+        status: assignmentSubmissions.status,
+      })
+      .from(assignmentSubmissions)
+      .where(eq(assignmentSubmissions.id, submissionId));
+    return submission;
   }
 
   async getAssignmentsByStudent(studentId: string): Promise<any[]> {
