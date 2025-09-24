@@ -4,8 +4,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns";
+import { useState } from "react";
 import { 
   Calendar,
   Clock,
@@ -17,12 +19,14 @@ import {
 } from "lucide-react";
 
 export default function TimetablePage() {
+  const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date()));
+  const [addEventOpen, setAddEventOpen] = useState(false);
+
   const { data: timetable = [] } = useQuery({
     queryKey: ["/api/timetable"],
   });
 
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const currentWeek = startOfWeek(new Date());
   
   const getTimetableForDay = (dayIndex: number) => {
     return timetable.filter((entry: any) => entry.dayOfWeek === dayIndex)
@@ -44,6 +48,16 @@ export default function TimetablePage() {
     return colors[index % colors.length];
   };
 
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeek(prev => 
+      direction === 'next' ? addWeeks(prev, 1) : subWeeks(prev, 1)
+    );
+  };
+
+  const handleAddEvent = () => {
+    setAddEventOpen(true);
+  };
+
   return (
     <MainLayout>
       <motion.div
@@ -62,16 +76,29 @@ export default function TimetablePage() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="icon">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigateWeek('prev')}
+              data-testid="button-prev-week"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" data-testid="text-current-week">
               {format(currentWeek, "MMM d")} - {format(addDays(currentWeek, 6), "MMM d, yyyy")}
             </Button>
-            <Button variant="outline" size="icon">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigateWeek('next')}
+              data-testid="button-next-week"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button>
+            <Button 
+              onClick={handleAddEvent}
+              data-testid="button-add-event"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Event
             </Button>
@@ -215,6 +242,31 @@ export default function TimetablePage() {
             )}
           </div>
         </GlassCard>
+
+        {/* Add Event Dialog */}
+        <Dialog open={addEventOpen} onOpenChange={setAddEventOpen}>
+          <DialogContent className="glass-morphism border-neon" data-testid="modal-timetable-event">
+            <DialogHeader>
+              <DialogTitle>
+                <GradientText>Add Timetable Event</GradientText>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                This feature is coming soon! You can create timetable entries from the teacher dashboard.
+              </p>
+              <div className="flex justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setAddEventOpen(false)}
+                  data-testid="button-close-event-dialog"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </MainLayout>
   );
