@@ -74,6 +74,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Teacher analytics route
+  app.get("/api/teacher/analytics", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "teacher") {
+        return res.status(403).json({ message: "Only teachers can access analytics" });
+      }
+      
+      const analytics = await storage.getTeacherAnalytics(req.user.id);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch teacher analytics" });
+    }
+  });
+
   // Assignment routes
   app.get("/api/assignments", requireAuth, async (req, res) => {
     try {

@@ -20,7 +20,7 @@ import {
   type EmotionEntry
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, or, count } from "drizzle-orm";
+import { eq, and, desc, asc, or, count, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -62,6 +62,14 @@ export interface IStorage {
   // Parent functionality
   getChildrenByParent(parentId: string): Promise<User[]>;
   linkParentChild(parentId: string, childId: string): Promise<void>;
+  
+  // Analytics
+  getTeacherAnalytics(teacherId: string): Promise<{
+    totalStudents: number;
+    assignmentsGraded: number;
+    averageGrade: number;
+    recentActivity: any[];
+  }>;
   
   sessionStore: session.SessionStore;
 }
@@ -372,6 +380,114 @@ export class DatabaseStorage implements IStorage {
     await db
       .insert(parentChildren)
       .values({ parentId, childId });
+  }
+
+  async getTeacherAnalytics(teacherId: string): Promise<{
+    totalStudents: number;
+    assignmentsGraded: number;
+    averageGrade: number;
+    recentActivity: any[];
+  }> {
+    // Get courses taught by this teacher
+    const teacherCourses = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(eq(courses.teacherId, teacherId));
+    
+    const courseIds = teacherCourses.map(course => course.id);
+    
+    if (courseIds.length === 0) {
+      return {
+        totalStudents: 0,
+        assignmentsGraded: 0,
+        averageGrade: 0,
+        recentActivity: []
+      };
+    }
+
+    // Count total students enrolled in teacher's courses
+    const [studentsResult] = await db
+      .select({ count: count() })
+      .from(courseEnrollments)
+      .where(courseIds.length === 1 
+        ? eq(courseEnrollments.courseId, courseIds[0])
+        : or(...courseIds.map(id => eq(courseEnrollments.courseId, id)))
+      );
+
+    // Get assignments created by this teacher and count graded ones
+    const teacherAssignments = await db
+      .select({ id: assignments.id })
+      .from(assignments)
+      .where(courseIds.length === 1 
+        ? eq(assignments.courseId, courseIds[0])
+        : or(...courseIds.map(id => eq(assignments.courseId, id)))
+      );
+    
+    const assignmentIds = teacherAssignments.map(a => a.id);
+    
+    let assignmentsGraded = 0;
+    let averageGrade = 0;
+    
+    if (assignmentIds.length > 0) {
+      // Count graded assignments
+      const [gradedResult] = await db
+        .select({ count: count() })
+        .from(assignmentSubmissions)
+        .where(and(
+          assignmentIds.length === 1 
+            ? eq(assignmentSubmissions.assignmentId, assignmentIds[0])
+            : or(...assignmentIds.map(id => eq(assignmentSubmissions.assignmentId, id))),
+          sql`grade IS NOT NULL`
+        ));
+      
+      assignmentsGraded = gradedResult.count;
+
+      // Calculate average grade
+      const gradeResults = await db
+        .select({ grade: assignmentSubmissions.grade })
+        .from(assignmentSubmissions)
+        .where(and(
+          assignmentIds.length === 1 
+            ? eq(assignmentSubmissions.assignmentId, assignmentIds[0])
+            : or(...assignmentIds.map(id => eq(assignmentSubmissions.assignmentId, id))),
+          sql`grade IS NOT NULL`
+        ));
+      
+      if (gradeResults.length > 0) {
+        const totalGrade = gradeResults.reduce((sum, result) => sum + (result.grade || 0), 0);
+        averageGrade = Math.round((totalGrade / gradeResults.length) * 10) / 10;
+      }
+    }
+
+    // Get recent activity (recent submissions and grading)
+    let recentActivity = [];
+    if (assignmentIds.length > 0) {
+      recentActivity = await db
+        .select({
+          id: assignmentSubmissions.id,
+          type: sql`'submission'`.as('type'),
+          assignmentTitle: assignments.title,
+          studentName: users.fullName,
+          timestamp: assignmentSubmissions.submittedAt,
+          status: assignmentSubmissions.status
+        })
+        .from(assignmentSubmissions)
+        .innerJoin(assignments, eq(assignmentSubmissions.assignmentId, assignments.id))
+        .innerJoin(users, eq(assignmentSubmissions.studentId, users.id))
+        .where(assignmentIds.length === 1 
+          ? eq(assignments.id, assignmentIds[0])
+          : or(...assignmentIds.map(id => eq(assignments.id, id)))
+        )
+        .orderBy(desc(assignmentSubmissions.submittedAt))
+        .limit(10);
+    }
+
+    return {
+      totalStudents: studentsResult.count,
+      assignmentsGraded,
+      averageGrade,
+      recentActivity
+    };
   }
 }
 

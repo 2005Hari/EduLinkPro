@@ -16,6 +16,11 @@ export default function TeacherDashboard() {
     enabled: !!user,
   });
 
+  const { data: analytics } = useQuery({
+    queryKey: ["/api/teacher/analytics"],
+    enabled: !!user && user.role === "teacher",
+  });
+
   const stats = [
     {
       title: "Active Courses",
@@ -26,24 +31,24 @@ export default function TeacherDashboard() {
     },
     {
       title: "Total Students",
-      value: "156",
+      value: analytics?.totalStudents?.toString() || "0",
       icon: Users,
       color: "secondary",
-      trend: "+12"
+      trend: analytics?.totalStudents > 0 ? `+${analytics.totalStudents}` : "0"
     },
     {
       title: "Assignments Graded",
-      value: "45",
+      value: analytics?.assignmentsGraded?.toString() || "0",
       icon: ClipboardCheck,
       color: "accent",
-      trend: "+8"
+      trend: analytics?.assignmentsGraded > 0 ? `+${analytics.assignmentsGraded}` : "0"
     },
     {
-      title: "Course Rating",
-      value: "4.8",
+      title: "Average Grade",
+      value: analytics?.averageGrade?.toString() || "0",
       icon: TrendingUp,
       color: "green",
-      trend: "+0.3"
+      trend: analytics?.averageGrade > 0 ? `${analytics.averageGrade}/10` : "N/A"
     }
   ];
 
@@ -127,9 +132,27 @@ export default function TeacherDashboard() {
         <h2 className="text-xl font-semibold mb-6">
           <GradientText>Recent Activity</GradientText>
         </h2>
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No recent activity</p>
-        </div>
+        {analytics?.recentActivity && analytics.recentActivity.length > 0 ? (
+          <div className="space-y-4">
+            {analytics.recentActivity.map((activity: any, index: number) => (
+              <div key={activity.id || index} className="flex items-center justify-between p-3 glass-morphism rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <ClipboardCheck className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{activity.studentName} submitted {activity.assignmentTitle}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Status: {activity.status} • {new Date(activity.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No recent activity</p>
+          </div>
+        )}
       </GlassCard>
 
       {/* Floating Action Button */}
