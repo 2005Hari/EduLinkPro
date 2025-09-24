@@ -29,5 +29,20 @@ export function ProtectedRoute({
     );
   }
 
-  return <Component />
+  // Role-based routing: redirect users from root path to their appropriate dashboards
+  if (path === "/" && user.role) {
+    return (
+      <Route path={path}>
+        {user.role === "teacher" && <Redirect to="/teacher" />}
+        {user.role === "parent" && <Redirect to="/parent" />}
+        {user.role === "student" && <Component />}
+      </Route>
+    );
+  }
+
+  return (
+    <Route path={path}>
+      <Component />
+    </Route>
+  );
 }
