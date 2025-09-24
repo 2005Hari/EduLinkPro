@@ -227,6 +227,15 @@ export const insertEmotionSchema = createInsertSchema(emotionEntries).pick({
   context: true,
 });
 
+export const insertTimetableSchema = createInsertSchema(timetableEntries).pick({
+  courseId: true,
+  title: true,
+  dayOfWeek: true,
+  startTime: true,
+  endTime: true,
+  location: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -236,4 +245,5 @@ export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type EmotionEntry = typeof emotionEntries.$inferSelect;
 export type TimetableEntry = typeof timetableEntries.$inferSelect;
+export type InsertTimetable = z.infer<typeof insertTimetableSchema>;
 export type Notification = typeof notifications.$inferSelect;

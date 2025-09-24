@@ -21,16 +21,17 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCourseSchema, insertAssignmentSchema, insertAnnouncementSchema } from "@shared/schema";
+import { insertCourseSchema, insertAssignmentSchema, insertAnnouncementSchema, insertTimetableSchema } from "@shared/schema";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye, Megaphone } from "lucide-react";
+import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye, Megaphone, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
 type CourseFormData = z.infer<typeof insertCourseSchema>;
 type AssignmentFormData = z.infer<typeof insertAssignmentSchema>;
 type AnnouncementFormData = z.infer<typeof insertAnnouncementSchema>;
+type TimetableFormData = z.infer<typeof insertTimetableSchema>;
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ export default function TeacherDashboard() {
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
   const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
+  const [createTimetableOpen, setCreateTimetableOpen] = useState(false);
 
   const { data: courses = [] } = useQuery<any[]>({
     queryKey: ["/api/courses"],
@@ -70,6 +72,30 @@ export default function TeacherDashboard() {
       toast({
         title: "Error",
         description: "Failed to create course. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createTimetableMutation = useMutation({
+    mutationFn: async (data: TimetableFormData) => {
+      const response = await apiRequest("POST", "/api/timetable", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/timetable"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teacher/analytics"] });
+      setCreateTimetableOpen(false);
+      toast({
+        title: "Success",
+        description: "Timetable entry created successfully!",
+      });
+      timetableForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create timetable entry. Please try again.",
         variant: "destructive",
       });
     },
@@ -157,6 +183,18 @@ export default function TeacherDashboard() {
     },
   });
 
+  const timetableForm = useForm<TimetableFormData>({
+    resolver: zodResolver(insertTimetableSchema),
+    defaultValues: {
+      courseId: "",
+      title: "",
+      dayOfWeek: 1, // Monday
+      startTime: "",
+      endTime: "",
+      location: "",
+    },
+  });
+
   const onCreateCourse = (data: CourseFormData) => {
     createCourseMutation.mutate(data);
   };
@@ -169,10 +207,15 @@ export default function TeacherDashboard() {
     createAnnouncementMutation.mutate(data);
   };
 
+  const onCreateTimetable = (data: TimetableFormData) => {
+    createTimetableMutation.mutate(data);
+  };
+
   // Click handlers
   const handleCreateCourse = () => setCreateCourseOpen(true);
   const handleCreateAssignment = () => setCreateAssignmentOpen(true);
   const handleCreateAnnouncement = () => setCreateAnnouncementOpen(true);
+  const handleCreateTimetable = () => setCreateTimetableOpen(true);
   const handleManageStudents = () => setLocation("/students");
   const handleViewAnalytics = () => setLocation("/analytics");
   const handleManageCourse = (courseId: string) => setLocation(`/courses/${courseId}/manage`);
@@ -274,6 +317,10 @@ export default function TeacherDashboard() {
             <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleCreateAnnouncement} data-testid="button-create-announcement">
               <Megaphone className="mr-2 h-4 w-4" />
               Add Announcement
+            </NeonButton>
+            <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleCreateTimetable} data-testid="button-create-timetable">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Add Timetable Entry
             </NeonButton>
             <NeonButton className="w-full justify-start" variant="outline" neon onClick={handleManageStudents} data-testid="button-manage-students">
               <Users className="mr-2 h-4 w-4" />
@@ -664,6 +711,165 @@ export default function TeacherDashboard() {
                   data-testid="button-submit-announcement"
                 >
                   {createAnnouncementMutation.isPending ? "Creating..." : "Add Announcement"}
+                </NeonButton>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Timetable Creation Dialog */}
+      <Dialog open={createTimetableOpen} onOpenChange={setCreateTimetableOpen}>
+        <DialogContent className="glass-morphism border-neon max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              <GradientText>Add Timetable Entry</GradientText>
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...timetableForm}>
+            <form onSubmit={timetableForm.handleSubmit(onCreateTimetable)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={timetableForm.control}
+                  name="courseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="glass-morphism" data-testid="select-timetable-course">
+                            <SelectValue placeholder="Select a course" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {courses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id}>
+                              {course.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={timetableForm.control}
+                  name="dayOfWeek"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Day of Week</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger className="glass-morphism" data-testid="select-day-of-week">
+                            <SelectValue placeholder="Select day" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="1">Monday</SelectItem>
+                          <SelectItem value="2">Tuesday</SelectItem>
+                          <SelectItem value="3">Wednesday</SelectItem>
+                          <SelectItem value="4">Thursday</SelectItem>
+                          <SelectItem value="5">Friday</SelectItem>
+                          <SelectItem value="6">Saturday</SelectItem>
+                          <SelectItem value="0">Sunday</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={timetableForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class Title</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter class title..." 
+                        {...field} 
+                        data-testid="input-timetable-title"
+                        className="glass-morphism"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={timetableForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time"
+                          {...field} 
+                          data-testid="input-start-time"
+                          className="glass-morphism"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={timetableForm.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time"
+                          {...field} 
+                          data-testid="input-end-time"
+                          className="glass-morphism"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={timetableForm.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter location (optional)..." 
+                        {...field} 
+                        data-testid="input-timetable-location"
+                        className="glass-morphism"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setCreateTimetableOpen(false)}
+                  data-testid="button-cancel-timetable"
+                >
+                  Cancel
+                </Button>
+                <NeonButton 
+                  type="submit" 
+                  neon 
+                  disabled={createTimetableMutation.isPending}
+                  data-testid="button-submit-timetable"
+                >
+                  {createTimetableMutation.isPending ? "Creating..." : "Add to Timetable"}
                 </NeonButton>
               </div>
             </form>
