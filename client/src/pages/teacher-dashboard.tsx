@@ -49,11 +49,10 @@ export default function TeacherDashboard() {
 
   // Course creation mutation
   const createCourseMutation = useMutation({
-    mutationFn: (data: CourseFormData) => 
-      apiRequest("/api/courses", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: async (data: CourseFormData) => {
+      const response = await apiRequest("POST", "/api/courses", data);
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teacher/analytics"] });

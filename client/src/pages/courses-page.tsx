@@ -10,6 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { insertCourseSchema } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { z } from "zod";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   BookOpen, 
   Search, 
@@ -22,16 +32,60 @@ import {
   Star
 } from "lucide-react";
 
+type CourseFormData = z.infer<typeof insertCourseSchema>;
+
 export default function CoursesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "completed">("all");
+  const [createCourseOpen, setCreateCourseOpen] = useState(false);
 
   const { data: courses = [], isLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
     enabled: !!user,
   });
+
+  // Course creation mutation
+  const createCourseMutation = useMutation({
+    mutationFn: async (data: CourseFormData) => {
+      const response = await apiRequest("POST", "/api/courses", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      setCreateCourseOpen(false);
+      toast({
+        title: "Success",
+        description: "Course created successfully!",
+      });
+      courseForm.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create course. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Course form
+  const courseForm = useForm<CourseFormData>({
+    resolver: zodResolver(insertCourseSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+    },
+  });
+
+  const onCreateCourse = (data: CourseFormData) => {
+    createCourseMutation.mutate(data);
+  };
+
+  const handleCreateCourse = () => setCreateCourseOpen(true);
 
   const filteredCourses = courses.filter((course) => {
     const matchesSearch = course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -63,7 +117,11 @@ export default function CoursesPage() {
         }
       </p>
       {user?.role === "teacher" && (
-        <Button className="neon-glow">
+        <Button 
+          className="neon-glow" 
+          onClick={handleCreateCourse}
+          data-testid="button-create-course-empty"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Create Course
         </Button>
@@ -95,7 +153,11 @@ export default function CoursesPage() {
           </div>
           
           {user?.role === "teacher" && (
-            <Button className="neon-glow">
+            <Button 
+              className="neon-glow" 
+              onClick={handleCreateCourse}
+              data-testid="button-create-course-header"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Course
             </Button>
@@ -265,6 +327,75 @@ export default function CoursesPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Create Course Dialog */}
+        <Dialog open={createCourseOpen} onOpenChange={setCreateCourseOpen}>
+          <DialogContent className="glass-morphism border-neon">
+            <DialogHeader>
+              <DialogTitle>
+                Create New Course
+              </DialogTitle>
+            </DialogHeader>
+            <Form {...courseForm}>
+              <form onSubmit={courseForm.handleSubmit(onCreateCourse)} className="space-y-4">
+                <FormField
+                  control={courseForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course Title</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter course title..." 
+                          {...field} 
+                          data-testid="input-course-title"
+                          className="glass-morphism"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={courseForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course Description</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter course description..." 
+                          {...field} 
+                          data-testid="textarea-course-description"
+                          className="glass-morphism min-h-[100px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setCreateCourseOpen(false)}
+                    data-testid="button-cancel-course"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="neon-glow"
+                    disabled={createCourseMutation.isPending}
+                    data-testid="button-submit-course"
+                  >
+                    {createCourseMutation.isPending ? "Creating..." : "Create Course"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
