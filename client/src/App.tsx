@@ -13,10 +13,11 @@ import StudentDashboard from "@/pages/student-dashboard";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import ParentDashboard from "@/pages/parent-dashboard";
 import CoursePlayer from "@/pages/course-player";
+import CoursesPage from "@/pages/courses-page";
 import AssignmentsPage from "@/pages/assignments-page";
 import TimetablePage from "@/pages/timetable-page";
 import EmotionMonitorPage from "@/pages/emotion-monitor-page";
-import NoticesAnnouncements from "@/pages/notices-announcements";
+import AnnouncementsPage from "@/pages/announcements-page";
 import ProfileSettings from "@/pages/profile-settings";
 import NotFound from "@/pages/not-found";
 
@@ -27,11 +28,12 @@ function Router() {
       <ProtectedRoute path="/student" component={StudentDashboard} />
       <ProtectedRoute path="/teacher" component={TeacherDashboard} />
       <ProtectedRoute path="/parent" component={ParentDashboard} />
+      <ProtectedRoute path="/courses" component={CoursesPage} />
       <ProtectedRoute path="/course/:id" component={CoursePlayer} />
       <ProtectedRoute path="/assignments" component={AssignmentsPage} />
       <ProtectedRoute path="/timetable" component={TimetablePage} />
       <ProtectedRoute path="/emotion-monitor" component={EmotionMonitorPage} />
-      <ProtectedRoute path="/announcements" component={NoticesAnnouncements} />
+      <ProtectedRoute path="/announcements" component={AnnouncementsPage} />
       <ProtectedRoute path="/profile" component={ProfileSettings} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
