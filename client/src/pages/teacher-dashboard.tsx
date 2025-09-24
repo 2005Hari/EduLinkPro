@@ -37,12 +37,12 @@ export default function TeacherDashboard() {
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
 
-  const { data: courses = [] } = useQuery({
+  const { data: courses = [] } = useQuery<any[]>({
     queryKey: ["/api/courses"],
     enabled: !!user,
   });
 
-  const { data: analytics } = useQuery({
+  const { data: analytics = {} } = useQuery<any>({
     queryKey: ["/api/teacher/analytics"],
     enabled: !!user && user.role === "teacher",
   });
@@ -123,7 +123,7 @@ export default function TeacherDashboard() {
       description: "",
       courseId: "",
       dueDate: new Date(),
-      maxPoints: 100,
+      maxPoints: 100 as number,
     },
   });
 
