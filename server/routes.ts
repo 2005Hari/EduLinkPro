@@ -219,6 +219,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to verify parent-child relationship
+  async function verifyParentChildRelationship(parentId: string, childId: string): Promise<boolean> {
+    const children = await storage.getChildrenByParent(parentId);
+    return children.some(child => child.id === childId);
+  }
+
+  app.get("/api/children/:childId/assignments", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "parent") {
+        return res.status(403).json({ message: "Only parents can access this endpoint" });
+      }
+      
+      const { childId } = req.params;
+      
+      // Verify this child belongs to the parent
+      const isValidChild = await verifyParentChildRelationship(req.user.id, childId);
+      if (!isValidChild) {
+        return res.status(403).json({ message: "You can only access your own children's data" });
+      }
+      
+      const assignments = await storage.getAssignmentsByStudent(childId);
+      res.json(assignments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch child's assignments" });
+    }
+  });
+
+  app.get("/api/children/:childId/courses", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "parent") {
+        return res.status(403).json({ message: "Only parents can access this endpoint" });
+      }
+      
+      const { childId } = req.params;
+      
+      // Verify this child belongs to the parent
+      const isValidChild = await verifyParentChildRelationship(req.user.id, childId);
+      if (!isValidChild) {
+        return res.status(403).json({ message: "You can only access your own children's data" });
+      }
+      
+      const courses = await storage.getCoursesByStudent(childId);
+      res.json(courses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch child's courses" });
+    }
+  });
+
+  app.get("/api/children/:childId/emotions", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "parent") {
+        return res.status(403).json({ message: "Only parents can access this endpoint" });
+      }
+      
+      const { childId } = req.params;
+      
+      // Verify this child belongs to the parent
+      const isValidChild = await verifyParentChildRelationship(req.user.id, childId);
+      if (!isValidChild) {
+        return res.status(403).json({ message: "You can only access your own children's data" });
+      }
+      
+      const emotions = await storage.getEmotionsByStudent(childId);
+      res.json(emotions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch child's emotions" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket setup
