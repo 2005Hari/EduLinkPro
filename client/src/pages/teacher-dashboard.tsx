@@ -84,15 +84,7 @@ export default function TeacherDashboard() {
   // Assignment creation mutation
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: AssignmentFormData) => {
-      const response = await fetch("/api/assignments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to create assignment");
-      }
+      const response = await apiRequest("POST", "/api/assignments", data);
       return response.json();
     },
     onSuccess: () => {
