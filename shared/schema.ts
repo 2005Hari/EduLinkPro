@@ -214,6 +214,7 @@ export const insertAssignmentSchema = createInsertSchema(assignments).pick({
   maxPoints: true,
 }).extend({
   dueDate: z.coerce.date(), // Convert string dates to Date objects
+  description: z.string().default(""),
 });
 
 export const insertAnnouncementSchema = createInsertSchema(announcements).pick({
@@ -221,6 +222,9 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).pick({
   content: true,
   courseId: true,
   isGlobal: true,
+}).extend({
+  courseId: z.string().optional(),
+  isGlobal: z.boolean().default(false),
 });
 
 export const insertEmotionSchema = createInsertSchema(emotionEntries).pick({
@@ -236,6 +240,8 @@ export const insertTimetableSchema = createInsertSchema(timetableEntries).pick({
   startTime: true,
   endTime: true,
   location: true,
+}).extend({
+  location: z.string().default(""),
 });
 
 // Types

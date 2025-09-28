@@ -96,9 +96,9 @@ export function Sidebar() {
             
             return (
               <Link key={item.href} href={item.href}>
-                <a
+                <div
                   className={cn(
-                    "flex items-center space-x-3 p-3 rounded-lg transition-all duration-300",
+                    "flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 cursor-pointer",
                     isActive
                       ? "bg-primary/20 text-primary neon-border"
                       : "hover:bg-muted/50"
@@ -107,7 +107,7 @@ export function Sidebar() {
                 >
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
-                </a>
+                </div>
               </Link>
             );
           })}
@@ -118,22 +118,22 @@ export function Sidebar() {
           <p className="text-xs text-muted-foreground mb-2">Quick Access</p>
           <div className="space-y-2">
             <Link href="/student">
-              <a className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
                 <UserCheck className="w-4 h-4" />
                 <span>Student View</span>
-              </a>
+              </div>
             </Link>
             <Link href="/teacher">
-              <a className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
                 <Presentation className="w-4 h-4" />
                 <span>Teacher View</span>
-              </a>
+              </div>
             </Link>
             <Link href="/parent">
-              <a className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors">
+              <div className="flex items-center space-x-2 text-xs p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
                 <Users className="w-4 h-4" />
                 <span>Parent View</span>
-              </a>
+              </div>
             </Link>
           </div>
         </GlassCard>

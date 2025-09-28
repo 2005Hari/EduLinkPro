@@ -468,7 +468,7 @@ export class DatabaseStorage implements IStorage {
           id: assignmentSubmissions.id,
           type: sql`'submission'`.as('type'),
           assignmentTitle: assignments.title,
-          studentName: users.fullName,
+          studentName: sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`.as('studentName'),
           timestamp: assignmentSubmissions.submittedAt,
           status: assignmentSubmissions.status
         })

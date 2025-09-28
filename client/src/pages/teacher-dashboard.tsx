@@ -607,11 +607,12 @@ export default function TeacherDashboard() {
 
       {/* Announcement Creation Dialog */}
       <Dialog open={createAnnouncementOpen} onOpenChange={setCreateAnnouncementOpen}>
-        <DialogContent className="glass-morphism border-neon max-w-2xl">
+        <DialogContent className="glass-morphism border-neon max-w-2xl" aria-describedby="announcement-description">
           <DialogHeader>
             <DialogTitle>
               <GradientText>Add Announcement</GradientText>
             </DialogTitle>
+            <p id="announcement-description" className="sr-only">Create a new announcement for your students</p>
           </DialogHeader>
           <Form {...announcementForm}>
             <form onSubmit={announcementForm.handleSubmit(onCreateAnnouncement)} className="space-y-4">
@@ -666,11 +667,13 @@ export default function TeacherDashboard() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="">No specific course</SelectItem>
-                          {courses.map((course: any) => (
-                            <SelectItem key={course.id} value={course.id}>
-                              {course.title}
-                            </SelectItem>
-                          ))}
+                          {Array.isArray(courses) && courses
+                            .filter((course: any) => course.id && course.title)
+                            .map((course: any) => (
+                              <SelectItem key={course.id} value={course.id}>
+                                {course.title}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -748,11 +751,13 @@ export default function TeacherDashboard() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {courses.map((course: any) => (
-                            <SelectItem key={course.id} value={course.id}>
-                              {course.title}
-                            </SelectItem>
-                          ))}
+                          {Array.isArray(courses) && courses
+                            .filter((course: any) => course.id && course.title)
+                            .map((course: any) => (
+                              <SelectItem key={course.id} value={course.id}>
+                                {course.title}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
