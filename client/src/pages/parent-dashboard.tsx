@@ -486,7 +486,7 @@ export default function ParentDashboard() {
                   const recentGrades = assignments.filter(a => a.status === 'graded' && a.grade && a.grade >= (a.maxPoints * 0.85));
                   if (recentGrades.length > 0) {
                     const bestGrade = recentGrades[0];
-                    const percentage = Math.round((bestGrade.grade / bestGrade.maxPoints) * 100);
+                    const percentage = Math.round(((bestGrade.grade || 0) / bestGrade.maxPoints) * 100);
                     alerts.push(
                       <div key={`achievement-${bestGrade.id}`} className="flex items-start gap-3 p-3 glass-morphism rounded-lg border-l-4 border-primary">
                         <TrendingUp className="h-5 w-5 text-primary mt-0.5" />
