@@ -200,7 +200,7 @@ export default function ParentDashboard() {
       {
         title: "Attendance Rate",
         value: assignments.length > 0 ? `${attendanceRate}%` : "No data",
-        icon: Calendar,
+        icon: CalendarIcon,
         color: "secondary" as const,
         trend: assignments.length > 0 ? (attendanceRate >= 80 ? "+excellent" : attendanceRate >= 60 ? "+good" : "needs attention") : "0"
       },
