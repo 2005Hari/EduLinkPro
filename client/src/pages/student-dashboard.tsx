@@ -13,26 +13,27 @@ import { NeonButton } from "@/components/ui/neon-button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { motion } from "framer-motion";
 import { Plus, BookOpen, ClipboardList, Calendar } from "lucide-react";
+import type { Course, Assignment, Announcement, TimetableEntry } from "@shared/schema";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
 
-  const { data: courses = [] } = useQuery({
+  const { data: courses = [] } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
     enabled: !!user,
   });
 
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [] } = useQuery<Assignment[]>({
     queryKey: ["/api/assignments"],
     enabled: !!user,
   });
 
-  const { data: announcements = [] } = useQuery({
+  const { data: announcements = [] } = useQuery<Announcement[]>({
     queryKey: ["/api/announcements"],
     enabled: !!user,
   });
 
-  const { data: timetable = [] } = useQuery({
+  const { data: timetable = [] } = useQuery<TimetableEntry[]>({
     queryKey: ["/api/timetable"],
     enabled: !!user,
   });
