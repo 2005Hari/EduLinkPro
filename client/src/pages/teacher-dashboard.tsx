@@ -24,9 +24,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCourseSchema, insertAssignmentSchema, insertAnnouncementSchema, insertTimetableSchema } from "@shared/schema";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye, Megaphone, CalendarDays } from "lucide-react";
+import { Plus, Users, BookOpen, ClipboardCheck, TrendingUp, Upload, Eye, Megaphone, CalendarDays, MessageSquare, Video, Clock } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import type { Message, Meeting } from "@shared/schema";
 
 type CourseFormData = z.infer<typeof insertCourseSchema>;
 type AssignmentFormData = z.infer<typeof insertAssignmentSchema>;
@@ -49,6 +51,18 @@ export default function TeacherDashboard() {
 
   const { data: analytics = {} } = useQuery<any>({
     queryKey: ["/api/teacher/analytics"],
+    enabled: !!user && user.role === "teacher",
+  });
+
+  // Fetch messages from parents
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ['/api/messages'],
+    enabled: !!user && user.role === "teacher",
+  });
+
+  // Fetch meetings with parents
+  const { data: meetings = [] } = useQuery<Meeting[]>({
+    queryKey: ['/api/meetings'],
     enabled: !!user && user.role === "teacher",
   });
 
@@ -366,6 +380,85 @@ export default function TeacherDashboard() {
           </div>
         )}
       </GlassCard>
+
+      {/* Parent Communication Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Messages from Parents */}
+        <GlassCard className="p-6 neon-glow">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">
+              <GradientText className="flex items-center gap-3">
+                <MessageSquare className="h-5 w-5" />
+                Parent Messages
+              </GradientText>
+            </h2>
+            {messages.filter(m => !m.isRead).length > 0 && (
+              <Badge variant="default">{messages.filter(m => !m.isRead).length} New</Badge>
+            )}
+          </div>
+          <div className="space-y-3 max-h-96 overflow-y-auto" data-testid="teacher-messages-list">
+            {messages.length > 0 ? messages.slice(0, 8).map((message) => (
+              <div key={message.id} className="p-3 glass-morphism rounded-lg hover:border-primary/50 transition-all">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-medium">{message.subject || "No subject"}</p>
+                      {!message.isRead && (
+                        <Badge variant="default" className="text-xs">New</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{message.content || ""}</p>
+                    {message.createdAt && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(message.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-muted-foreground text-sm text-center py-8">No messages yet.</p>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* Scheduled Meetings */}
+        <GlassCard className="p-6 neon-glow">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">
+              <GradientText className="flex items-center gap-3">
+                <Video className="h-5 w-5" />
+                Parent-Teacher Meetings
+              </GradientText>
+            </h2>
+          </div>
+          <div className="space-y-3 max-h-96 overflow-y-auto" data-testid="teacher-meetings-list">
+            {meetings.length > 0 ? meetings.slice(0, 8).map((meeting) => (
+              <div key={meeting.id} className="p-3 glass-morphism rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{meeting.title || "Meeting"}</p>
+                    {meeting.scheduledAt && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(meeting.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs capitalize">{meeting.status || "scheduled"}</Badge>
+                      {meeting.duration && (
+                        <span className="text-xs text-muted-foreground">{meeting.duration} min</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-muted-foreground text-sm text-center py-8">No meetings scheduled.</p>
+            )}
+          </div>
+        </GlassCard>
+      </div>
 
       {/* Floating Action Button */}
       <motion.button
