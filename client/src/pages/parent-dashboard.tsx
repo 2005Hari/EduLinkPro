@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/main-layout";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -8,8 +8,15 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GraduationCap, Calendar, Heart, TrendingUp, AlertTriangle, CheckCircle, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { GraduationCap, Calendar as CalendarIcon, Heart, TrendingUp, AlertTriangle, CheckCircle, User, MessageSquare, Video, CalendarDays, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import type { Message, Meeting, Event, TimetableEntry } from "@shared/schema";
 
 interface Child {
   id: string;
@@ -29,6 +36,7 @@ interface Assignment {
   dueDate: string;
   courseTitle: string;
   submittedAt: string | null;
+  feedback?: string | null;
 }
 
 interface Course {
@@ -49,6 +57,9 @@ interface Emotion {
 
 export default function ParentDashboard() {
   const [selectedChildId, setSelectedChildId] = useState<string>("");
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   // Fetch children
   const { data: children = [], isLoading: childrenLoading } = useQuery<Child[]>({
@@ -69,6 +80,73 @@ export default function ParentDashboard() {
   const { data: emotions = [], isLoading: emotionsLoading } = useQuery<Emotion[]>({
     queryKey: ['/api/children', selectedChildId, 'emotions'],
     enabled: !!selectedChildId,
+  });
+
+  // Fetch messages
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ['/api/messages'],
+  });
+
+  // Fetch meetings
+  const { data: meetings = [] } = useQuery<Meeting[]>({
+    queryKey: ['/api/meetings'],
+  });
+
+  // Fetch events
+  const { data: events = [] } = useQuery<Event[]>({
+    queryKey: ['/api/events'],
+  });
+
+  // Fetch timetable for selected child
+  const { data: timetable = [] } = useQuery<TimetableEntry[]>({
+    queryKey: ['/api/timetable'],
+    enabled: !!selectedChildId,
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: { receiverId: string; subject: string; content: string }) => {
+      const response = await apiRequest("POST", "/api/messages", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+      setMessageDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Message sent successfully!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Schedule meeting mutation
+  const scheduleMeetingMutation = useMutation({
+    mutationFn: async (data: { teacherId: string; studentId: string; title: string; scheduledAt: Date; duration: number; description?: string }) => {
+      const response = await apiRequest("POST", "/api/meetings", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/meetings'] });
+      setMeetingDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Meeting scheduled successfully!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to schedule meeting. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Set default child selection safely
@@ -428,7 +506,13 @@ export default function ParentDashboard() {
                           {assignment.title} - {assignment.courseTitle}
                           {isGraded && assignment.grade && ` - Grade: ${Math.round((assignment.grade / assignment.maxPoints) * 100)}%`}
                         </p>
-                        <p className="text-xs text-muted-foreground">{timeAgo}</p>
+                        {isGraded && assignment.feedback && (
+                          <div className="mt-2 p-2 bg-primary/10 rounded text-xs">
+                            <p className="font-semibold text-primary mb-1">Teacher Feedback:</p>
+                            <p className="text-muted-foreground">{assignment.feedback}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
                       </div>
                     </div>
                   );
@@ -528,6 +612,250 @@ export default function ParentDashboard() {
             )}
           </GlassCard>
         </div>
+
+        {/* Communication & Scheduling Features */}
+        {selectedChildId && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Messages Section */}
+            <GlassCard className="p-6 neon-glow">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">
+                  <GradientText className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5" />
+                    Messages
+                  </GradientText>
+                </h2>
+                <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-new-message">New Message</Button>
+                  </DialogTrigger>
+                  <DialogContent className="glass-morphism border-neon">
+                    <DialogHeader>
+                      <DialogTitle><GradientText>Send Message to Teacher</GradientText></DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      sendMessageMutation.mutate({
+                        receiverId: formData.get('teacherId') as string,
+                        subject: formData.get('subject') as string,
+                        content: formData.get('content') as string,
+                      });
+                    }} className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Teacher</label>
+                        <Select name="teacherId" required>
+                          <SelectTrigger data-testid="select-teacher">
+                            <SelectValue placeholder="Select teacher" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courses.map((course: any) => (
+                              <SelectItem key={course.id} value={course.teacherId || "unknown"}>
+                                {course.title} Teacher
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Subject</label>
+                        <Input name="subject" placeholder="Message subject" required data-testid="input-message-subject" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Message</label>
+                        <Textarea name="content" placeholder="Your message..." rows={4} required data-testid="textarea-message-content" />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={sendMessageMutation.isPending} data-testid="button-send-message">
+                        {sendMessageMutation.isPending ? "Sending..." : "Send Message"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="space-y-3 max-h-80 overflow-y-auto" data-testid="messages-list">
+                {messages.length > 0 ? messages.slice(0, 5).map((message) => (
+                  <div key={message.id} className="p-3 glass-morphism rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{message.subject}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{message.content}</p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {format(new Date(message.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
+                      {!message.isRead && (
+                        <Badge variant="default" className="ml-2">New</Badge>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-muted-foreground text-sm">No messages yet.</p>
+                )}
+              </div>
+            </GlassCard>
+
+            {/* Meetings Section */}
+            <GlassCard className="p-6 neon-glow">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">
+                  <GradientText className="flex items-center gap-3">
+                    <Video className="h-5 w-5" />
+                    Meetings
+                  </GradientText>
+                </h2>
+                <Dialog open={meetingDialogOpen} onOpenChange={setMeetingDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-schedule-meeting">Schedule Meeting</Button>
+                  </DialogTrigger>
+                  <DialogContent className="glass-morphism border-neon">
+                    <DialogHeader>
+                      <DialogTitle><GradientText>Schedule Parent-Teacher Meeting</GradientText></DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      scheduleMeetingMutation.mutate({
+                        teacherId: formData.get('teacherId') as string,
+                        studentId: selectedChildId,
+                        title: formData.get('title') as string,
+                        scheduledAt: new Date(formData.get('scheduledAt') as string),
+                        duration: 30,
+                        description: formData.get('description') as string,
+                      });
+                    }} className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">Teacher</label>
+                        <Select name="teacherId" required>
+                          <SelectTrigger data-testid="select-meeting-teacher">
+                            <SelectValue placeholder="Select teacher" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courses.map((course: any) => (
+                              <SelectItem key={course.id} value={course.teacherId || "unknown"}>
+                                {course.title} Teacher
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Meeting Title</label>
+                        <Input name="title" placeholder="Discussion topic" required data-testid="input-meeting-title" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Date & Time</label>
+                        <Input name="scheduledAt" type="datetime-local" required data-testid="input-meeting-datetime" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Notes (optional)</label>
+                        <Textarea name="description" placeholder="Additional details..." rows={3} data-testid="textarea-meeting-notes" />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={scheduleMeetingMutation.isPending} data-testid="button-submit-meeting">
+                        {scheduleMeetingMutation.isPending ? "Scheduling..." : "Schedule Meeting"}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="space-y-3 max-h-80 overflow-y-auto" data-testid="meetings-list">
+                {meetings.length > 0 ? meetings.slice(0, 5).map((meeting) => (
+                  <div key={meeting.id} className="p-3 glass-morphism rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <CalendarDays className="h-5 w-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{meeting.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(new Date(meeting.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                        <Badge variant="outline" className="mt-2">{meeting.status}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="text-muted-foreground text-sm">No meetings scheduled.</p>
+                )}
+              </div>
+            </GlassCard>
+          </div>
+        )}
+
+        {/* Calendar & Timetable */}
+        {selectedChildId && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Calendar with Events */}
+            <GlassCard className="p-6 neon-glow">
+              <h2 className="text-xl font-semibold mb-6">
+                <GradientText className="flex items-center gap-3">
+                  <CalendarIcon className="h-5 w-5" />
+                  Upcoming Events & Deadlines
+                </GradientText>
+              </h2>
+              <div className="space-y-3 max-h-96 overflow-y-auto" data-testid="events-calendar">
+                {[...events, ...assignments.filter(a => a.dueDate).map(a => ({
+                  id: a.id,
+                  title: a.title,
+                  eventDate: a.dueDate,
+                  eventType: 'assignment' as const,
+                }))].sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()).slice(0, 10).map((event) => (
+                  <div key={event.id} className="p-3 glass-morphism rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-accent mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{event.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(new Date(event.eventDate), "EEEE, MMM d, yyyy")}
+                        </p>
+                        <Badge variant="outline" className="mt-2 capitalize">{event.eventType}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {events.length === 0 && assignments.filter(a => a.dueDate).length === 0 && (
+                  <p className="text-muted-foreground text-sm">No upcoming events.</p>
+                )}
+              </div>
+            </GlassCard>
+
+            {/* Timetable View */}
+            <GlassCard className="p-6 neon-glow">
+              <h2 className="text-xl font-semibold mb-6">
+                <GradientText className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5" />
+                  Weekly Schedule
+                </GradientText>
+              </h2>
+              <div className="space-y-3 max-h-96 overflow-y-auto" data-testid="timetable-view">
+                {timetable.length > 0 ? (
+                  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day, index) => {
+                    const dayEntries = timetable.filter((entry: any) => entry.dayOfWeek === index + 1);
+                    return dayEntries.length > 0 ? (
+                      <div key={day}>
+                        <h3 className="text-sm font-semibold text-primary mb-2">{day}</h3>
+                        <div className="space-y-2">
+                          {dayEntries.map((entry: any) => (
+                            <div key={entry.id} className="p-2 glass-morphism rounded text-sm">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium">{entry.title}</p>
+                                  <p className="text-xs text-muted-foreground">{entry.location || 'No location'}</p>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                  {entry.startTime} - {entry.endTime}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null;
+                  })
+                ) : (
+                  <p className="text-muted-foreground text-sm">No schedule available.</p>
+                )}
+              </div>
+            </GlassCard>
+          </div>
+        )}
 
         {/* No children message */}
         {children.length === 0 && !childrenLoading && (
