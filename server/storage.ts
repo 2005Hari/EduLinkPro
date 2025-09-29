@@ -11,6 +11,9 @@ import {
   parentChildren,
   courseMaterials,
   attendanceRecords,
+  messages,
+  meetings,
+  events,
   type User, 
   type InsertUser,
   type Course,
@@ -18,7 +21,10 @@ import {
   type Announcement,
   type AssignmentSubmission,
   type TimetableEntry,
-  type EmotionEntry
+  type EmotionEntry,
+  type Message,
+  type Meeting,
+  type Event
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, or, count, sql } from "drizzle-orm";
@@ -71,6 +77,23 @@ export interface IStorage {
     averageGrade: number;
     recentActivity: any[];
   }>;
+  
+  // Messages
+  getMessagesByUser(userId: string): Promise<Message[]>;
+  getConversation(user1Id: string, user2Id: string): Promise<Message[]>;
+  createMessage(message: any): Promise<Message>;
+  markMessageAsRead(messageId: string): Promise<void>;
+  
+  // Meetings
+  getMeetingsByParent(parentId: string): Promise<Meeting[]>;
+  getMeetingsByTeacher(teacherId: string): Promise<Meeting[]>;
+  createMeeting(meeting: any): Promise<Meeting>;
+  updateMeetingStatus(meetingId: string, status: string): Promise<void>;
+  
+  // Events
+  getEventsByCourse(courseId: string): Promise<Event[]>;
+  getEventsByDate(startDate: Date, endDate: Date): Promise<Event[]>;
+  createEvent(event: any): Promise<Event>;
   
   sessionStore: session.SessionStore;
 }
@@ -489,6 +512,104 @@ export class DatabaseStorage implements IStorage {
       averageGrade,
       recentActivity
     };
+  }
+
+  // Message methods
+  async getMessagesByUser(userId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(or(
+        eq(messages.senderId, userId),
+        eq(messages.receiverId, userId)
+      ))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async getConversation(user1Id: string, user2Id: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(or(
+        and(eq(messages.senderId, user1Id), eq(messages.receiverId, user2Id)),
+        and(eq(messages.senderId, user2Id), eq(messages.receiverId, user1Id))
+      ))
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async createMessage(message: any): Promise<Message> {
+    const [newMessage] = await db
+      .insert(messages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+
+  async markMessageAsRead(messageId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, messageId));
+  }
+
+  // Meeting methods
+  async getMeetingsByParent(parentId: string): Promise<Meeting[]> {
+    return await db
+      .select()
+      .from(meetings)
+      .where(eq(meetings.parentId, parentId))
+      .orderBy(desc(meetings.scheduledAt));
+  }
+
+  async getMeetingsByTeacher(teacherId: string): Promise<Meeting[]> {
+    return await db
+      .select()
+      .from(meetings)
+      .where(eq(meetings.teacherId, teacherId))
+      .orderBy(desc(meetings.scheduledAt));
+  }
+
+  async createMeeting(meeting: any): Promise<Meeting> {
+    const [newMeeting] = await db
+      .insert(meetings)
+      .values(meeting)
+      .returning();
+    return newMeeting;
+  }
+
+  async updateMeetingStatus(meetingId: string, status: string): Promise<void> {
+    await db
+      .update(meetings)
+      .set({ status })
+      .where(eq(meetings.id, meetingId));
+  }
+
+  // Event methods
+  async getEventsByCourse(courseId: string): Promise<Event[]> {
+    return await db
+      .select()
+      .from(events)
+      .where(eq(events.courseId, courseId))
+      .orderBy(asc(events.eventDate));
+  }
+
+  async getEventsByDate(startDate: Date, endDate: Date): Promise<Event[]> {
+    return await db
+      .select()
+      .from(events)
+      .where(and(
+        sql`${events.eventDate} >= ${startDate}`,
+        sql`${events.eventDate} <= ${endDate}`
+      ))
+      .orderBy(asc(events.eventDate));
+  }
+
+  async createEvent(event: any): Promise<Event> {
+    const [newEvent] = await db
+      .insert(events)
+      .values(event)
+      .returning();
+    return newEvent;
   }
 }
 

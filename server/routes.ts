@@ -398,6 +398,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message routes
+  app.get("/api/messages", requireAuth, async (req, res) => {
+    try {
+      const messages = await storage.getMessagesByUser(req.user.id);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.get("/api/messages/conversation/:userId", requireAuth, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const messages = await storage.getConversation(req.user.id, userId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/messages", requireAuth, async (req, res) => {
+    try {
+      const message = await storage.createMessage({
+        ...req.body,
+        senderId: req.user.id
+      });
+      
+      // Broadcast new message to receiver
+      broadcastToSpecificUsers({
+        type: "new_message",
+        data: message
+      }, [req.body.receiverId]);
+      
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.patch("/api/messages/:messageId/read", requireAuth, async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      await storage.markMessageAsRead(messageId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+
+  // Meeting routes
+  app.get("/api/meetings", requireAuth, async (req, res) => {
+    try {
+      let meetings;
+      if (req.user.role === "parent") {
+        meetings = await storage.getMeetingsByParent(req.user.id);
+      } else if (req.user.role === "teacher") {
+        meetings = await storage.getMeetingsByTeacher(req.user.id);
+      } else {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      res.json(meetings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch meetings" });
+    }
+  });
+
+  app.post("/api/meetings", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "parent") {
+        return res.status(403).json({ message: "Only parents can schedule meetings" });
+      }
+      
+      const meeting = await storage.createMeeting({
+        ...req.body,
+        parentId: req.user.id
+      });
+      
+      // Notify teacher about new meeting request
+      broadcastToSpecificUsers({
+        type: "new_meeting",
+        data: meeting
+      }, [req.body.teacherId]);
+      
+      res.status(201).json(meeting);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create meeting" });
+    }
+  });
+
+  app.patch("/api/meetings/:meetingId/status", requireAuth, async (req, res) => {
+    try {
+      const { meetingId } = req.params;
+      const { status } = req.body;
+      await storage.updateMeetingStatus(meetingId, status);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update meeting status" });
+    }
+  });
+
+  // Event routes
+  app.get("/api/events", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      let events;
+      
+      if (startDate && endDate) {
+        events = await storage.getEventsByDate(
+          new Date(startDate as string),
+          new Date(endDate as string)
+        );
+      } else {
+        // Get events for current month by default
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        events = await storage.getEventsByDate(firstDay, lastDay);
+      }
+      
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
+
+  app.post("/api/events", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.createEvent({
+        ...req.body,
+        createdBy: req.user.id
+      });
+      
+      // Broadcast new event
+      broadcastToClients({
+        type: "new_event",
+        data: event
+      });
+      
+      res.status(201).json(event);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create event" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // WebSocket setup with user tracking
