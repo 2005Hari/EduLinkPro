@@ -59,6 +59,8 @@ export default function ParentDashboard() {
   const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedMeetingTeacherId, setSelectedMeetingTeacherId] = useState("");
   const { toast } = useToast();
 
   // Fetch children
@@ -636,15 +638,23 @@ export default function ParentDashboard() {
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
+                      if (!selectedTeacherId) {
+                        toast({
+                          title: "Error",
+                          description: "Please select a teacher",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
                       sendMessageMutation.mutate({
-                        receiverId: formData.get('teacherId') as string,
+                        receiverId: selectedTeacherId,
                         subject: formData.get('subject') as string,
                         content: formData.get('content') as string,
                       });
                     }} className="space-y-4">
                       <div>
                         <label className="text-sm font-medium">Teacher</label>
-                        <Select name="teacherId" required>
+                        <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
                           <SelectTrigger data-testid="select-teacher">
                             <SelectValue placeholder="Select teacher" />
                           </SelectTrigger>
@@ -677,11 +687,13 @@ export default function ParentDashboard() {
                   <div key={message.id} className="p-3 glass-morphism rounded-lg">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{message.subject}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{message.content}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(message.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                        </p>
+                        <p className="text-sm font-medium">{message.subject || "No subject"}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{message.content || ""}</p>
+                        {message.createdAt && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {format(new Date(message.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                          </p>
+                        )}
                       </div>
                       {!message.isRead && (
                         <Badge variant="default" className="ml-2">New</Badge>
@@ -714,8 +726,16 @@ export default function ParentDashboard() {
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
+                      if (!selectedMeetingTeacherId) {
+                        toast({
+                          title: "Error",
+                          description: "Please select a teacher",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
                       scheduleMeetingMutation.mutate({
-                        teacherId: formData.get('teacherId') as string,
+                        teacherId: selectedMeetingTeacherId,
                         studentId: selectedChildId,
                         title: formData.get('title') as string,
                         scheduledAt: new Date(formData.get('scheduledAt') as string),
@@ -725,7 +745,7 @@ export default function ParentDashboard() {
                     }} className="space-y-4">
                       <div>
                         <label className="text-sm font-medium">Teacher</label>
-                        <Select name="teacherId" required>
+                        <Select value={selectedMeetingTeacherId} onValueChange={setSelectedMeetingTeacherId}>
                           <SelectTrigger data-testid="select-meeting-teacher">
                             <SelectValue placeholder="Select teacher" />
                           </SelectTrigger>
@@ -763,11 +783,13 @@ export default function ParentDashboard() {
                     <div className="flex items-start gap-3">
                       <CalendarDays className="h-5 w-5 text-primary mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{meeting.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(meeting.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
-                        </p>
-                        <Badge variant="outline" className="mt-2">{meeting.status}</Badge>
+                        <p className="text-sm font-medium">{meeting.title || "Meeting"}</p>
+                        {meeting.scheduledAt && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(meeting.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
+                          </p>
+                        )}
+                        <Badge variant="outline" className="mt-2">{meeting.status || "scheduled"}</Badge>
                       </div>
                     </div>
                   </div>
@@ -801,11 +823,13 @@ export default function ParentDashboard() {
                     <div className="flex items-start gap-3">
                       <Clock className="h-5 w-5 text-accent mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{event.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(event.eventDate), "EEEE, MMM d, yyyy")}
-                        </p>
-                        <Badge variant="outline" className="mt-2 capitalize">{event.eventType}</Badge>
+                        <p className="text-sm font-medium">{event.title || "Event"}</p>
+                        {event.eventDate && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(event.eventDate), "EEEE, MMM d, yyyy")}
+                          </p>
+                        )}
+                        <Badge variant="outline" className="mt-2 capitalize">{event.eventType || "event"}</Badge>
                       </div>
                     </div>
                   </div>

@@ -85,3 +85,41 @@ Preferred communication style: Simple, everyday language.
 - **Emotion Tracking**: Placeholder infrastructure for AI-powered emotion detection
 - **Performance Analytics**: Framework for tracking student progress and engagement
 - **Real-time Notifications**: WebSocket-based instant messaging system
+
+## Parent Dashboard Features (Enhanced)
+
+The parent dashboard has been significantly enhanced with comprehensive communication and scheduling capabilities:
+
+### Communication Features
+- **Direct Messaging**: Parents can send messages directly to teachers through modal dialogs
+- **Message History**: View recent messages with read/unread status indicators
+- **Teacher Selection**: Dropdown to select teachers based on enrolled courses
+
+### Meeting Management
+- **Meeting Scheduler**: Schedule parent-teacher meetings with date/time picker
+- **Meeting Status**: View upcoming meetings with status badges (scheduled/completed/cancelled)
+- **Meeting Details**: Add meeting titles, duration, and optional notes/descriptions
+
+### Calendar & Events
+- **Visual Calendar**: Displays upcoming events and assignment deadlines in chronological order
+- **Event Types**: Categorized events (assignment, exam, holiday, activity, meeting) with color-coded badges
+- **Deadline Tracking**: Shows all upcoming assignment due dates integrated with event calendar
+
+### Timetable View
+- **Weekly Schedule**: Displays student's class schedule organized by day (Monday-Friday)
+- **Time Slots**: Shows start and end times for each class
+- **Location Information**: Displays classroom or location for each scheduled class
+
+### Database Schema Additions
+New tables to support parent features:
+- **messages**: Stores parent-teacher communications with read status tracking
+- **meetings**: Manages parent-teacher meeting schedules and status
+- **events**: School-wide events and activities calendar
+- **parent_children**: Links parent accounts to their children (student accounts)
+
+### Technical Implementation
+- Uses React Query for efficient data fetching and caching
+- Implements controlled forms with proper state management
+- WebSocket integration for real-time message and meeting notifications
+- Proper error handling with toast notifications
+- Safety checks for null/undefined date values to prevent crashes
