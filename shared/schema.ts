@@ -222,8 +222,9 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).pick({
   content: true,
   courseId: true,
   isGlobal: true,
+  authorId: true,
 }).extend({
-  courseId: z.string().optional(),
+  courseId: z.string().nullable().optional(),
   isGlobal: z.boolean().default(false),
 });
 

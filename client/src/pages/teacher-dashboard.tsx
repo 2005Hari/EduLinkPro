@@ -174,7 +174,7 @@ export default function TeacherDashboard() {
 
   // Announcement form
   const announcementForm = useForm<AnnouncementFormData>({
-    resolver: zodResolver(insertAnnouncementSchema),
+    resolver: zodResolver(insertAnnouncementSchema.omit({ authorId: true })),
     defaultValues: {
       title: "",
       content: "",
@@ -204,7 +204,12 @@ export default function TeacherDashboard() {
   };
 
   const onCreateAnnouncement = (data: AnnouncementFormData) => {
-    createAnnouncementMutation.mutate(data);
+    // Since course selection was removed, set courseId to null for global announcements
+    const announcementData = {
+      ...data,
+      courseId: null
+    };
+    createAnnouncementMutation.mutate(announcementData);
   };
 
   const onCreateTimetable = (data: TimetableFormData) => {
@@ -652,58 +657,29 @@ export default function TeacherDashboard() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={announcementForm.control}
-                  name="courseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Course (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl>
-                          <SelectTrigger className="glass-morphism" data-testid="select-announcement-course">
-                            <SelectValue placeholder="Select a course (optional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="">No specific course</SelectItem>
-                          {Array.isArray(courses) && courses
-                            .filter((course: any) => course.id && course.title)
-                            .map((course: any) => (
-                              <SelectItem key={course.id} value={course.id}>
-                                {course.title}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={announcementForm.control}
-                  name="isGlobal"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 glass-morphism">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-global-announcement"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Global Announcement
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Visible to all students
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={announcementForm.control}
+                name="isGlobal"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 glass-morphism">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-global-announcement"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Global Announcement
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Visible to all students
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
               <div className="flex justify-end space-x-2">
                 <Button 
                   type="button" 
@@ -752,9 +728,9 @@ export default function TeacherDashboard() {
                         </FormControl>
                         <SelectContent>
                           {Array.isArray(courses) && courses
-                            .filter((course: any) => course.id && course.title)
+                            .filter((course: any) => course?.id && course?.title)
                             .map((course: any) => (
-                              <SelectItem key={course.id} value={course.id}>
+                              <SelectItem key={String(course.id)} value={String(course.id)}>
                                 {course.title}
                               </SelectItem>
                             ))}
