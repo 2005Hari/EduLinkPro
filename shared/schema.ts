@@ -144,6 +144,44 @@ export const attendanceRecords = pgTable("attendance_records", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Messages (Parent-Teacher Communication)
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").references(() => users.id).notNull(),
+  receiverId: varchar("receiver_id").references(() => users.id).notNull(),
+  subject: text("subject").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Parent-Teacher Meetings
+export const meetings = pgTable("meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentId: varchar("parent_id").references(() => users.id).notNull(),
+  teacherId: varchar("teacher_id").references(() => users.id).notNull(),
+  studentId: varchar("student_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  duration: integer("duration").notNull(), // in minutes
+  location: text("location"),
+  status: varchar("status", { enum: ["scheduled", "completed", "cancelled"] }).default("scheduled"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Calendar Events
+export const events = pgTable("events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  eventDate: timestamp("event_date").notNull(),
+  eventType: varchar("event_type", { enum: ["assignment", "exam", "holiday", "activity", "meeting"] }).notNull(),
+  courseId: varchar("course_id").references(() => courses.id),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   courses: many(courses),
@@ -245,6 +283,41 @@ export const insertTimetableSchema = createInsertSchema(timetableEntries).pick({
   location: z.string().default(""),
 });
 
+export const insertMessageSchema = createInsertSchema(messages).pick({
+  senderId: true,
+  receiverId: true,
+  subject: true,
+  content: true,
+});
+
+export const insertMeetingSchema = createInsertSchema(meetings).pick({
+  parentId: true,
+  teacherId: true,
+  studentId: true,
+  title: true,
+  description: true,
+  scheduledAt: true,
+  duration: true,
+  location: true,
+}).extend({
+  scheduledAt: z.coerce.date(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+});
+
+export const insertEventSchema = createInsertSchema(events).pick({
+  title: true,
+  description: true,
+  eventDate: true,
+  eventType: true,
+  courseId: true,
+  createdBy: true,
+}).extend({
+  eventDate: z.coerce.date(),
+  description: z.string().optional(),
+  courseId: z.string().nullable().optional(),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -256,3 +329,9 @@ export type EmotionEntry = typeof emotionEntries.$inferSelect;
 export type TimetableEntry = typeof timetableEntries.$inferSelect;
 export type InsertTimetable = z.infer<typeof insertTimetableSchema>;
 export type Notification = typeof notifications.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Meeting = typeof meetings.$inferSelect;
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+export type Event = typeof events.$inferSelect;
+export type InsertEvent = z.infer<typeof insertEventSchema>;
