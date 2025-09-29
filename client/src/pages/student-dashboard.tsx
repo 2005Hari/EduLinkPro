@@ -12,8 +12,9 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { NeonButton } from "@/components/ui/neon-button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { motion } from "framer-motion";
-import { Plus, BookOpen, ClipboardList, Calendar } from "lucide-react";
-import type { Course, Assignment, Announcement, TimetableEntry } from "@shared/schema";
+import { Plus, BookOpen, ClipboardList, Calendar, Bell, MessageSquare, Video } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import type { Course, Assignment, Announcement, TimetableEntry, Meeting } from "@shared/schema";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -35,6 +36,11 @@ export default function StudentDashboard() {
 
   const { data: timetable = [] } = useQuery<TimetableEntry[]>({
     queryKey: ["/api/timetable"],
+    enabled: !!user,
+  });
+
+  const { data: meetings = [] } = useQuery<Meeting[]>({
+    queryKey: ['/api/meetings'],
     enabled: !!user,
   });
 
@@ -148,6 +154,69 @@ export default function StudentDashboard() {
 
       {/* Timetable */}
       <TimetableWidget timetable={timetable} />
+
+      {/* Notifications & Updates */}
+      <GlassCard className="p-6 neon-glow mb-8">
+        <h2 className="text-xl font-semibold mb-6">
+          <GradientText className="flex items-center gap-3">
+            <Bell className="h-5 w-5" />
+            Notifications & Updates
+          </GradientText>
+        </h2>
+        <div className="space-y-3" data-testid="student-notifications-list">
+          {/* Upcoming Parent-Teacher Meetings */}
+          {meetings.length > 0 && meetings.slice(0, 3).map((meeting) => (
+            <div key={meeting.id} className="p-4 glass-morphism rounded-lg flex items-start gap-3">
+              <Video className="h-5 w-5 text-secondary mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-medium">Parent-Teacher Meeting</p>
+                  <Badge variant="outline" className="text-xs">
+                    {meeting.status || "scheduled"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {meeting.title || "Meeting scheduled"} 
+                  {meeting.scheduledAt && ` - ${new Date(meeting.scheduledAt).toLocaleDateString()}`}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {/* New Assignments Indicator */}
+          {assignments.filter((a: any) => !a.status || a.status === "pending").length > 0 && (
+            <div className="p-4 glass-morphism rounded-lg flex items-start gap-3">
+              <ClipboardList className="h-5 w-5 text-primary mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">New Assignments</p>
+                <p className="text-xs text-muted-foreground">
+                  You have {assignments.filter((a: any) => !a.status || a.status === "pending").length} pending assignments
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Recent Announcements Preview */}
+          {announcements.length > 0 && announcements.slice(0, 1).map((announcement: any) => (
+            <div key={announcement.id} className="p-4 glass-morphism rounded-lg flex items-start gap-3">
+              <MessageSquare className="h-5 w-5 text-accent mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">New Announcement</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {announcement.content}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {meetings.length === 0 && assignments.filter((a: any) => !a.status || a.status === "pending").length === 0 && announcements.length === 0 && (
+            <div className="text-center py-8">
+              <Bell className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No new notifications</p>
+            </div>
+          )}
+        </div>
+      </GlassCard>
 
       {/* Recent Announcements */}
       <GlassCard className="p-6 neon-glow">
