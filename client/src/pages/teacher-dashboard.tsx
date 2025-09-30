@@ -235,9 +235,9 @@ export default function TeacherDashboard() {
   const handleCreateAssignment = () => setCreateAssignmentOpen(true);
   const handleCreateAnnouncement = () => setCreateAnnouncementOpen(true);
   const handleCreateTimetable = () => setCreateTimetableOpen(true);
-  const handleManageStudents = () => setLocation("/students");
+  const handleManageStudents = () => setLocation("/students"); // Navigate to students page
   const handleViewAnalytics = () => setLocation("/analytics");
-  const handleManageCourse = (courseId: string) => setLocation(`/courses/${courseId}/manage`);
+  const handleManageCourse = (courseId: string) => setLocation(`/course/${courseId}`); // Navigate to course player to view/manage course
 
   const stats = [
     {

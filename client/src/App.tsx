@@ -14,6 +14,7 @@ import TeacherDashboard from "@/pages/teacher-dashboard";
 import ParentDashboard from "@/pages/parent-dashboard";
 import CoursePlayer from "@/pages/course-player";
 import CoursesPage from "@/pages/courses-page";
+import StudentsPage from "@/pages/students-page";
 import AssignmentsPage from "@/pages/assignments-page";
 import TimetablePage from "@/pages/timetable-page";
 import EmotionMonitorPage from "@/pages/emotion-monitor-page";
@@ -30,6 +31,7 @@ function Router() {
       <ProtectedRoute path="/teacher" component={TeacherDashboard} />
       <ProtectedRoute path="/parent" component={ParentDashboard} />
       <ProtectedRoute path="/courses" component={CoursesPage} />
+      <ProtectedRoute path="/students" component={StudentsPage} />
       <ProtectedRoute path="/course/:id" component={CoursePlayer} />
       <ProtectedRoute path="/assignments" component={AssignmentsPage} />
       <ProtectedRoute path="/timetable" component={TimetablePage} />
