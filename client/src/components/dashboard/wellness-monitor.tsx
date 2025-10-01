@@ -106,28 +106,35 @@ export function WellnessMonitor() {
   };
 
   const startVoiceRecording = async () => {
+    console.log('🎤 Start Voice Recording clicked');
+    
     try {
+      console.log('Requesting microphone access...');
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         audio: true,
         video: false 
       });
       
+      console.log('✅ Microphone access granted', mediaStream);
       setAudioStream(mediaStream);
       
       const recorder = new MediaRecorder(mediaStream);
       const audioChunks: BlobPart[] = [];
       
       recorder.ondataavailable = (event) => {
+        console.log('📊 Audio data available:', event.data.size, 'bytes');
         audioChunks.push(event.data);
       };
       
       recorder.onstop = () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        console.log('Audio recording saved:', audioBlob);
+        console.log('🎵 Audio recording saved:', audioBlob.size, 'bytes');
         // You can send this to the server for emotion analysis
       };
       
       recorder.start();
+      console.log('🔴 Recording started');
       setMediaRecorder(recorder);
       setIsRecording(true);
       
@@ -136,28 +143,35 @@ export function WellnessMonitor() {
         description: "Voice emotion analysis is now recording",
       });
     } catch (error) {
+      console.error('❌ Microphone error:', error);
       toast({
         title: "Microphone Error",
-        description: "Could not access microphone. Please check permissions.",
+        description: error instanceof Error ? error.message : "Could not access microphone. Please check permissions.",
         variant: "destructive",
       });
     }
   };
 
   const stopVoiceRecording = () => {
+    console.log('⏹️ Stop Voice Recording clicked', { mediaRecorder, isRecording });
+    
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
+      console.log('⏹️ MediaRecorder stopped');
       setIsRecording(false);
       
       if (audioStream) {
         audioStream.getTracks().forEach(track => track.stop());
         setAudioStream(null);
+        console.log('🔇 Audio stream stopped and cleaned up');
       }
       
       toast({
         title: "Recording Stopped",
         description: "Voice recording has been saved",
       });
+    } else {
+      console.warn('⚠️ Cannot stop: mediaRecorder or isRecording is false');
     }
   };
 
