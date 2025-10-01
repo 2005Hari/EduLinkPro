@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface CourseCardProps {
   course: {
@@ -15,7 +19,41 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course }: CourseCardProps) {
-  const progress = course.progress || Math.floor(Math.random() * 100);
+  const progress = course.progress || 0;
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
+  const enrollMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      return await apiRequest("POST", `/api/courses/${courseId}/enroll`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({
+        title: "Enrolled!",
+        description: `You've been enrolled in ${course.title}`,
+      });
+      // Navigate to course player
+      setLocation(`/course/${course.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Already enrolled",
+        description: "You're already enrolled in this course",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleContinue = () => {
+    if (progress > 0) {
+      // Already enrolled, just navigate
+      setLocation(`/course/${course.id}`);
+    } else {
+      // Not enrolled yet, enroll first
+      enrollMutation.mutate(course.id);
+    }
+  };
 
   return (
     <motion.div
@@ -45,8 +83,14 @@ export function CourseCard({ course }: CourseCardProps) {
               <span className="text-xs text-muted-foreground">{progress}%</span>
             </div>
           </div>
-          <Button size="sm" className="hover:bg-primary/80 transition-colors duration-300">
-            Continue
+          <Button 
+            size="sm" 
+            className="hover:bg-primary/80 transition-colors duration-300"
+            onClick={handleContinue}
+            disabled={enrollMutation.isPending}
+            data-testid={`button-continue-${course.id}`}
+          >
+            {enrollMutation.isPending ? "Enrolling..." : progress > 0 ? "Continue" : "Start"}
           </Button>
         </div>
       </GlassCard>
