@@ -26,8 +26,35 @@ export default function StudentsPage() {
     enabled: !!user && user.role === "teacher",
   });
 
-  // Get unique students from all courses
-  const students: EnrolledStudent[] = [];
+  const { data: enrolledStudentsData = [] } = useQuery<any[]>({
+    queryKey: ["/api/students/enrolled"],
+    enabled: !!user && user.role === "teacher",
+  });
+
+  // Group enrolled students by student ID to get unique students with aggregated data
+  const studentsMap = new Map<string, EnrolledStudent>();
+  
+  enrolledStudentsData.forEach((enrollment) => {
+    const studentId = enrollment.id;
+    
+    if (studentsMap.has(studentId)) {
+      const existing = studentsMap.get(studentId)!;
+      existing.coursesCount += 1;
+    } else {
+      studentsMap.set(studentId, {
+        id: enrollment.id,
+        username: enrollment.username,
+        email: enrollment.email,
+        firstName: enrollment.firstName,
+        lastName: enrollment.lastName,
+        coursesCount: 1,
+        assignmentsCompleted: 0,
+        avgGrade: enrollment.progress || 0,
+      });
+    }
+  });
+
+  const students = Array.from(studentsMap.values());
 
   return (
     <MainLayout>
@@ -156,23 +183,29 @@ export default function StudentsPage() {
 
           {courses.length > 0 ? (
             <div className="space-y-4">
-              {courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="p-4 glass-morphism rounded-lg"
-                  data-testid={`course-enrollment-${course.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{course.title}</h3>
-                      <p className="text-sm text-muted-foreground">{course.description}</p>
+              {courses.map((course) => {
+                const enrollmentCount = enrolledStudentsData.filter(
+                  (e) => e.courseId === course.id
+                ).length;
+                
+                return (
+                  <div
+                    key={course.id}
+                    className="p-4 glass-morphism rounded-lg"
+                    data-testid={`course-enrollment-${course.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">{course.title}</h3>
+                        <p className="text-sm text-muted-foreground">{course.description}</p>
+                      </div>
+                      <Badge variant="outline">
+                        {enrollmentCount} {enrollmentCount === 1 ? 'student' : 'students'}
+                      </Badge>
                     </div>
-                    <Badge variant="outline">
-                      0 students
-                    </Badge>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8">
