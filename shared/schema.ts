@@ -318,6 +318,11 @@ export const insertEventSchema = createInsertSchema(events).pick({
   courseId: z.string().nullable().optional(),
 });
 
+export const insertEnrollmentSchema = createInsertSchema(courseEnrollments).pick({
+  courseId: true,
+  studentId: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -335,3 +340,5 @@ export type Meeting = typeof meetings.$inferSelect;
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+export type CourseEnrollment = typeof courseEnrollments.$inferSelect;
+export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
