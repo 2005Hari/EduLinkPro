@@ -45,6 +45,7 @@ export interface IStorage {
   getCoursesByStudent(studentId: string): Promise<Course[]>;
   createCourse(course: any, teacherId: string): Promise<Course>;
   enrollStudent(courseId: string, studentId: string): Promise<void>;
+  getEnrolledStudentsByTeacher(teacherId: string): Promise<any[]>;
   
   // Assignment management
   getAssignmentsByCourse(courseId: string): Promise<Assignment[]>;
@@ -181,6 +182,29 @@ export class DatabaseStorage implements IStorage {
     await db
       .insert(courseEnrollments)
       .values({ courseId, studentId });
+  }
+
+  async getEnrolledStudentsByTeacher(teacherId: string): Promise<any[]> {
+    // Get all students enrolled in courses taught by this teacher
+    const enrolledStudents = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        courseId: courses.id,
+        courseTitle: courses.title,
+        progress: courseEnrollments.progress,
+        enrolledAt: courseEnrollments.enrolledAt,
+      })
+      .from(courseEnrollments)
+      .innerJoin(courses, eq(courseEnrollments.courseId, courses.id))
+      .innerJoin(users, eq(courseEnrollments.studentId, users.id))
+      .where(eq(courses.teacherId, teacherId))
+      .orderBy(desc(courseEnrollments.enrolledAt));
+
+    return enrolledStudents;
   }
 
   async getAssignmentsByCourse(courseId: string): Promise<Assignment[]> {
