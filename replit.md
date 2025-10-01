@@ -158,3 +158,36 @@ All three dashboards are now fully interconnected to enable seamless communicati
 - All dashboards tested and verified working with proper error handling
 - WebSocket events propagate updates across all connected dashboards
 - Badge components show unread message counts on teacher dashboard
+
+## Course Enrollment System (October 2025)
+
+A complete course enrollment system has been implemented to connect students with courses and display enrollment data in the teacher's dashboard.
+
+### Student Enrollment Flow
+- **Smart Continue Button**: Displays "Start" for unenrolled courses (progress = 0) and "Continue" for enrolled courses (progress > 0)
+- **One-Click Enrollment**: When students click "Start", they are automatically enrolled via POST /api/courses/{id}/enroll
+- **Instant Navigation**: After enrollment, students are redirected to the course player (/course/{id})
+- **Toast Notifications**: Success messages confirm enrollment completion
+- **Idempotent Design**: Re-enrollment attempts are handled gracefully without errors
+
+### Teacher Students Management
+- **Manage Students Page**: New /students route displays all students enrolled in teacher's courses
+- **Student Overview**: Shows unique students with:
+  - Full name, email, and username
+  - Total number of courses enrolled
+  - Average progress/grade per student
+- **Course Enrollment Stats**: Displays enrollment count for each course
+- **Real-time Data**: Powered by GET /api/students/enrolled endpoint with live query updates
+
+### Database & API
+- **courseEnrollments Table**: Tracks student-course relationships with progress tracking
+- **Enrollment Endpoint**: POST /api/courses/{courseId}/enroll (student-only access)
+- **Students Endpoint**: GET /api/students/enrolled (teacher-only access)
+- **Storage Methods**:
+  - `enrollStudent(courseId, studentId)`: Creates enrollment (idempotent)
+  - `getEnrolledStudentsByTeacher(teacherId)`: Joins enrollments with courses and users
+
+### UI Components
+- **CourseCard Enhancement**: Added enrollment mutation with loading states
+- **Students Page**: Comprehensive dashboard showing enrolled students and course statistics
+- **Data Aggregation**: Groups enrollments by student to show unique students with course counts
