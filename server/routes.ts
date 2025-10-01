@@ -74,6 +74,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get enrolled students for a teacher
+  app.get("/api/students/enrolled", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "teacher") {
+        return res.status(403).json({ message: "Only teachers can access enrolled students" });
+      }
+      
+      const enrolledStudents = await storage.getEnrolledStudentsByTeacher(req.user.id);
+      res.json(enrolledStudents);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch enrolled students" });
+    }
+  });
+
   // Teacher analytics route
   app.get("/api/teacher/analytics", requireAuth, async (req, res) => {
     try {
